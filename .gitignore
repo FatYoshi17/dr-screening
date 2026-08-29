@@ -1,0 +1,24 @@
+# Datasets - large, not checked in (see README for download links)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Generated output
+results/*
+!results/.gitkeep
+
+# Trained model weights, if/when they exist
+*.mat
+*.h5
+*.onnx
+
+# MATLAB
+*.asv
+*.m~
+slprj/
+*.slxc
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -7,6 +7,8 @@ data/processed/*
 # Generated output
 results/*
 !results/.gitkeep
+!results/samples/
+!results/samples/**
 
 # Trained model weights, if/when they exist
 *.mat

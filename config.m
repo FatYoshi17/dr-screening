@@ -11,6 +11,11 @@ function cfg = config()
     cfg.driveDir     = fullfile(cfg.dataRaw, 'drive');
     cfg.idridDir     = fullfile(cfg.dataRaw, 'idrid', 'IDRiD');
     cfg.messidor2Dir = fullfile(cfg.dataRaw, 'messidor2', 'Messidor-2');
+    cfg.refinedIdridDir      = fullfile(cfg.dataRaw, 'refined_idrid');
+    cfg.refinedIdridTrainImg = fullfile(cfg.refinedIdridDir, 'Train', 'Images');
+    cfg.refinedIdridTrainLbl = fullfile(cfg.refinedIdridDir, 'Train', 'Labels');
+    cfg.refinedIdridTestImg  = fullfile(cfg.refinedIdridDir, 'Test', 'Images');
+    cfg.refinedIdridTestLbl  = fullfile(cfg.refinedIdridDir, 'Test', 'Labels');
 
     cfg.idridSegImagesTrain = fullfile(cfg.idridDir, 'A. Segmentation', ...
         '1. Original Images', 'a. Training Set');

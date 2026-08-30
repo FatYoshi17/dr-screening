@@ -44,5 +44,10 @@ registration. Download and place them under `data/raw/<name>/`:
 - [Messidor-2](https://www.adcis.net/en/third-party/messidor2/) → `data/raw/messidor2/` (registration required)
 - [APTOS 2019](https://www.kaggle.com/c/aptos2019-blindness-detection) → `data/raw/aptos2019/`
 - [DRIVE](https://drive.grand-challenge.org/) → `data/raw/drive/`
+- [Refined IDRiD](https://zenodo.org/records/17615903) → `data/raw/refined_idrid/{Train,Test}/{Images,Labels}/` — 12-class
+  unified segmentation masks (background, VH, retina, fovea, vessel, OD, EX, IRMA, HE, NV, CWS, MA
+  as single-channel PNGs, pixel values per the paper's Table 2) for the same 81 IDRiD segmentation
+  images. Adds vessel/fovea/IRMA/NV annotations that original IDRiD never had. See
+  `results/samples/idrid17_original_vs_refined.png` for a side-by-side on one real image.
 
-`config.m` has the exact expected sub-paths for IDRiD once it's downloaded.
+`config.m` has the exact expected sub-paths for IDRiD and Refined IDRiD once they're downloaded.

@@ -1,61 +1,80 @@
-function qc = assessImageQuality(rgbImage)
-%ASSESSIMAGEQUALITY Evaluate a fundus image for gradability.
-%   qc = assessImageQuality(rgbImage) returns a struct:
-%     qc.fovMask, qc.fovCoverage, qc.sharpness, qc.illumMean,
-%     qc.illumUniformity, qc.overallScore, qc.isGradable, qc.failReasons
+function qc = assessImageQuality(rgbImage, modelPath)
+%ASSESSIMAGEQUALITY Module 1: score a fundus image and classify Pass/Enhance/Reject.
+%   qc = assessImageQuality(rgbImage) loads the trained ordinal
+%   logistic regression model from data/models/module1_quality_model.mat
+%   (train it first with trainOrdinalQualityModel) and returns:
+%     qc.fovMask       - logical FOV mask
+%     qc.features      - raw feature struct (extractQualityFeatures output)
+%     qc.featureScores - 1x5 normalized [0,1] scores, same order as qc.featureNames
+%     qc.featureNames  - {'sharpness','exposure','contrast','fov','noise'}
+%     qc.qualityScore  - continuous ordinal-regression score (higher = better)
+%     qc.decision      - categorical 'Reject' | 'Enhance' | 'Pass'
+%     qc.classProbs    - [P(Reject) P(Enhance) P(Pass)]
+%     qc.isGradable    - true unless decision == 'Reject'
+%     qc.failReasons   - cell array of plain-language reasons, populated
+%                        whenever decision ~= 'Pass' (empty for Pass)
 %
-%   Thresholds below are starting points tuned for typical desktop and
-%   portable fundus camera output. Re-tune against a labeled batch of
-%   your own "good" vs "bad" images before trusting them clinically.
+%   qc = assessImageQuality(rgbImage, modelPath) loads a model from a
+%   non-default path.
 %
-%   See also: fovMask, enhanceImage, rejectUngradeable
+%   This replaces the earlier hand-tuned weighted-sum version with the
+%   trained "Version A" ordinal regression design: 5 classical features,
+%   each logistic-normalized to [0,1], combined by a ridge-regularized
+%   ordinal logistic regression calibrated on EyeQ.
+%
+%   See also: extractQualityFeatures, normalizeQualityFeatures,
+%   trainOrdinalQualityModel, enhanceImage, rejectUngradeable.
+
+    if nargin < 2 || isempty(modelPath)
+        modelPath = fullfile('data', 'models', 'module1_quality_model.mat');
+    end
+    if ~isfile(modelPath)
+        error(['No trained Module 1 model found at %s.\n' ...
+               'Run trainOrdinalQualityModel(eyeQImageDir, eyeQLabelsCsv) first ' ...
+               '- see docs/RUN_GUIDE.md.'], modelPath);
+    end
+    loaded = load(modelPath, 'model');
+    model = loaded.model;
 
     rgbImage = im2uint8(rgbImage);
     mask = fovMask(rgbImage);
-    fovCoverage = nnz(mask) / numel(mask);
 
-    grayImg = im2double(rgb2gray(rgbImage));
+    features = extractQualityFeatures(rgbImage, mask);
+    [featureScores, featureNames] = normalizeQualityFeatures(features, model.normParams);
 
-    lap = fspecial('laplacian', 0.2);
-    lapResponse = imfilter(grayImg, lap, 'replicate');
-    sharpness = var(lapResponse(mask));
-
-    greenChan = im2double(rgbImage(:,:,2));
-    illumMean = mean(greenChan(mask)) * 255;
-
-    blockSize = max(floor(size(grayImg,1)/8), 16);
-    blockMeans = blockproc(greenChan, [blockSize blockSize], @(b) mean(b.data(:)));
-    illumUniformity = 1 - min(std(blockMeans(:)) / (mean(blockMeans(:)) + eps), 1);
-
-    sharpNorm = min(sharpness / 0.01, 1);
-    fovNorm   = min(fovCoverage / 0.60, 1);
-    illumNorm = max(1 - abs(illumMean/255 - 0.45) / 0.45, 0);
-
-    weights = [0.40 0.25 0.20 0.15];
-    overallScore = weights * [sharpNorm; fovNorm; illumNorm; illumUniformity];
-
-    failReasons = {};
-    if sharpNorm < 0.25
-        failReasons{end+1} = 'Image too blurred / out of focus';
-    end
-    if fovNorm < 0.5
-        failReasons{end+1} = 'Retina fills too little of the frame (reposition camera)';
-    end
-    if illumMean < 40
-        failReasons{end+1} = 'Image too dark (increase illumination / flash)';
-    elseif illumMean > 220
-        failReasons{end+1} = 'Image overexposed (reduce illumination / flash)';
-    end
-    if illumUniformity < 0.5
-        failReasons{end+1} = 'Uneven illumination across the retina';
-    end
+    [predictedClass, classProbs] = predict(model.ordinalModel, featureScores);
+    % Continuous score: probability-weighted position on the ordinal
+    % scale (0 = certain Reject, 1 = certain Pass) - useful for logging
+    % and for Module 4's report even though the categorical decision is
+    % what actually drives Pass/Enhance/Reject.
+    ordinalWeights = [0, 0.5, 1]; % Reject, Enhance, Pass
+    qualityScore = classProbs * ordinalWeights';
 
     qc.fovMask = mask;
-    qc.fovCoverage = fovCoverage;
-    qc.sharpness = sharpness;
-    qc.illumMean = illumMean;
-    qc.illumUniformity = illumUniformity;
-    qc.overallScore = overallScore;
-    qc.isGradable = isempty(failReasons);
-    qc.failReasons = failReasons;
+    qc.features = features;
+    qc.featureScores = featureScores;
+    qc.featureNames = featureNames;
+    qc.qualityScore = qualityScore;
+    qc.decision = predictedClass;
+    qc.classProbs = classProbs;
+    qc.isGradable = (predictedClass ~= 'Reject');
+
+    qc.failReasons = {};
+    if predictedClass ~= 'Pass'
+        lowIdx = find(featureScores < 0.5);
+        reasonMap = containers.Map( ...
+            {'sharpness', 'exposure', 'contrast', 'fov', 'noise'}, ...
+            {'Image too blurred / out of focus - refocus and hold steady', ...
+             'Poor exposure (too dark, overexposed, or too many clipped pixels) - adjust flash/illumination', ...
+             'Low contrast - check lens cleanliness and illumination', ...
+             'Retina fills too little of the frame, or FOV is irregular - recentre and get closer', ...
+             'Excess noise - check for low-light sensor noise or camera shake'});
+        for i = 1:numel(lowIdx)
+            qc.failReasons{end+1} = reasonMap(featureNames{lowIdx(i)}); %#ok<AGROW>
+        end
+        if isempty(qc.failReasons)
+            qc.failReasons{end+1} = sprintf( ...
+                'Borderline overall quality (score %.2f) - no single feature failed outright', qualityScore);
+        end
+    end
 end

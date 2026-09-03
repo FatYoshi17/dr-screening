@@ -11,6 +11,7 @@ function cfg = config()
     cfg.driveDir     = fullfile(cfg.dataRaw, 'drive');
     cfg.idridDir     = fullfile(cfg.dataRaw, 'idrid', 'IDRiD');
     cfg.messidor2Dir = fullfile(cfg.dataRaw, 'messidor2', 'Messidor-2');
+    cfg.eyeqDir      = fullfile(cfg.dataRaw, 'eyeq');
     cfg.refinedIdridDir      = fullfile(cfg.dataRaw, 'refined_idrid');
     cfg.refinedIdridTrainImg = fullfile(cfg.refinedIdridDir, 'Train', 'Images');
     cfg.refinedIdridTrainLbl = fullfile(cfg.refinedIdridDir, 'Train', 'Labels');
@@ -29,7 +30,16 @@ function cfg = config()
     cfg.dataProcessed = fullfile(root, 'data', 'processed');
     cfg.resultsDir     = fullfile(root, 'results');
 
-    for d = {cfg.dataProcessed, cfg.resultsDir}
+    % Trained model outputs - Modules 1-4 (see docs/RUN_GUIDE.md).
+    cfg.dataModels                    = fullfile(root, 'data', 'models');
+    cfg.module1QualityModel           = fullfile(cfg.dataModels, 'module1_quality_model.mat');
+    cfg.trackANetPath                 = fullfile(cfg.dataModels, 'trackA_net.mat');
+    cfg.trackBSegformerNetPath        = fullfile(cfg.dataModels, 'trackB_segformer_net.mat');
+    cfg.trackBSegformerOnnxPath       = fullfile(cfg.dataModels, 'segformer_ma.onnx');
+    cfg.module3GradingCnnPath         = fullfile(cfg.dataModels, 'module3_grading_cnn.mat');
+    cfg.module4ConfidenceCalibPath    = fullfile(cfg.dataModels, 'module4_confidence_calibration.mat');
+
+    for d = {cfg.dataProcessed, cfg.resultsDir, cfg.dataModels}
         if ~isfolder(d{1}), mkdir(d{1}); end
     end
 end

@@ -13,28 +13,45 @@ background in [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 |---|---|---|
 | **Module 1** — image quality | Threshold fallback working now; real EyeQ-trained model training in progress | Threshold model verified on real images |
 | **Module 2, Track A** — structures (OD, vessels, EX, HE, IRMA, NV, CWS...) | **Trained** (resnet18 DeepLabV3+, 80 epochs) | Loss ~0.26, ~95% pixel accuracy |
-| **Module 2, Track B** — microaneurysms (SegFormer) | Blocked — see below | — |
+| **Module 2, Track B** — microaneurysms (SegFormer) | Import fixed and verified — **fine-tuning not yet run** | `predict()` runs end-to-end, stable non-degenerate output |
 | **Module 3** — severity grading | **Trained** (resnet50 + GeM pooling, 30 epochs) | Validation QWK **0.9156** |
 | **Module 4** — explainability (Grad-CAM, calibration) | Code complete, awaiting Module 3's calibration pass | — |
 | **Frontend** | Not built — see [frontend/README.md](frontend/README.md) | — |
 
-**Why Track B is blocked:** Track B's design uses a pretrained
-SegFormer-B0, exported to ONNX in Python and imported into MATLAB
-(`module2_segmentation/trackB_microaneurysms/exportSegformerONNX.py` →
-`importSegformerMATLAB.m`). The ONNX export itself succeeded and is
-committed-ready (`data/models/segformer_ma.onnx`, gitignored but
-reproducible via the export script). The *import* is blocked by a
-genuine version mismatch inside MathWorks' own R2025a release: the
-separately-updated "Deep Learning Toolbox Converter for ONNX Model
-Format" package (v25.1.1) needs a protobuf symbol
-(`RepeatedPtrFieldBase::element_at`) that doesn't exist in R2025a's
-base-install `libprotobuf3.dll` — confirmed by direct PE import/export
-table inspection, not a guess. A clean R2025b install (protobuf and
-the ONNX converter shipping together, version-matched) is the fix in
-progress. A MATLAB-native CBAM-attention CNN (no ONNX) exists as a
-fallback (`buildTrackBNetwork.m`) if the R2025b path doesn't pan out —
-deliberately not used yet per an explicit decision to keep the
-originally-specified SegFormer architecture.
+**Track B's SegFormer import is fixed.** MATLAB's ONNX converter is
+blocked by a genuine MathWorks packaging defect — the "Deep Learning
+Toolbox Converter for ONNX Model Format" package needs a protobuf
+symbol (`RepeatedPtrFieldBase::element_at`) missing from every copy of
+`libprotobuf3.dll` this project could find (R2025a, a fresh R2025b
+install, and the Compiler SDK's own copy — confirmed by direct PE
+import/export table inspection, not a guess; see
+[docs/segformer_onnx_issue.md](docs/segformer_onnx_issue.md)). That
+path was abandoned in favor of `importNetworkFromPyTorch` on a
+`torch.jit.trace` export
+(`exportSegformerEager.py` → `importSegformerPyTorch.m`), which
+required `attn_implementation='eager'` (the default SDPA path has a
+tracer-breaking dynamic bool) and PyTorch ≥ 2.8.
+
+The generated custom-layer code (`+segformer_eager/`) needed extensive
+manual fixes to actually run: MATLAB's `dlnetwork/predict()` dispatch
+silently squeezes the leading batch=1 dimension out of nested custom
+layers' array storage, corrupting every rank/size/batch/channel value
+threaded through the generated code — nondeterministically, since some
+`predict()` calls hit it and others don't. Fixed by deriving batch,
+channels, and sequence length directly from each tensor's own raw
+storage shape instead of trusting the threaded values, at every call
+site across the encoder and every per-stage duplicate of each
+generated class (see the inline comments throughout `+segformer_eager/*.m`
+for the full diagnosis at each site). `predict()` now runs the full
+network end to end (`test_segformer_predict.m`), producing a stable
+`[128 128 2 1]` output with no NaNs across repeated runs.
+
+`buildTrackBSegformerNetwork.m` wraps the imported encoder with the
+same 4x upsample + softmax + Dice+Focal loss head the rest of Track B
+uses, and `trainTrackB.m` now fine-tunes this network instead of the
+CBAM CNN fallback (`buildTrackBNetwork.m`, kept only as a fallback,
+not currently used). Fine-tuning itself has not been run yet — that's
+the next step.
 
 ## Repo layout
 
@@ -42,7 +59,7 @@ originally-specified SegFormer architecture.
 module1_quality/          image quality scoring (ordinal regression / threshold fallback) + enhancement
 module2_segmentation/
   trackA_structures/       unified multi-class structure segmentation — DeepLabV3+ (resnet18) + CBAM + multi-scale attention
-  trackB_microaneurysms/   dedicated microaneurysm detection — SegFormer-B0 via ONNX (blocked, see above) + a native CBAM CNN fallback
+  trackB_microaneurysms/   dedicated microaneurysm detection — SegFormer-B0 via importNetworkFromPyTorch (working, fine-tuning pending) + a native CBAM CNN fallback
   legacy_v1_classical/     superseded classical (non-deep-learning) approach, kept for reference only
 module3_grading/          rule-based Grade 0/1 + full-range grading CNN (resnet50) + disagreement flagging
 module4_explainability/   Grad-CAM, calibrated confidence, lesion-attention overlap, annotated report
@@ -60,9 +77,10 @@ data/                     datasets and trained models (gitignored, see below)
    Learning, Deep Learning, and Computer Vision Toolboxes. A GPU is
    needed to train Module 2 and Module 3 in reasonable time. Track B's
    SegFormer path additionally needs the Deep Learning Toolbox
-   Converter for ONNX Model Format support package, and Python 3.9+
-   with `torch`, `transformers`, `onnx` on whichever machine runs the
-   export script (see `docs/RUN_GUIDE.md`).
+   Converter for PyTorch Model Format support package (not the ONNX
+   one — see above), and Python 3.9+ with `torch>=2.8`, `transformers`
+   on whichever machine runs `exportSegformerEager.py` (see
+   `docs/RUN_GUIDE.md`).
 2. In MATLAB:
    ```matlab
    cd('path/to/dr-screening')

@@ -42,7 +42,7 @@ classdef aten__layer_norm33 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [layernorm_hiddenstates_1] = tracedPyTorchFunction(obj,layernorm_argument1_1,false,"predict");
 
-            [layernorm_hiddenstates_1_rank] = ones([1,layernorm_hiddenstates_1.rank], 'single');
+            [layernorm_hiddenstates_1_rank] = segformer_eager.ops.onesRankLike(layernorm_hiddenstates_1.rank, layernorm_hiddenstates_1.value);
             layernorm_hiddenstates_1_rank = dlarray(layernorm_hiddenstates_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(layernorm_hiddenstates_1.value,'dlarray') && any(dims(layernorm_hiddenstates_1.value) == 'U'))
@@ -63,7 +63,7 @@ classdef aten__layer_norm33 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [layernorm_hiddenstates_1] = tracedPyTorchFunction(obj,layernorm_argument1_1,true,"forward");
 
-            [layernorm_hiddenstates_1_rank] = ones([1,layernorm_hiddenstates_1.rank], 'single');
+            [layernorm_hiddenstates_1_rank] = segformer_eager.ops.onesRankLike(layernorm_hiddenstates_1.rank, layernorm_hiddenstates_1.value);
             layernorm_hiddenstates_1_rank = dlarray(layernorm_hiddenstates_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(layernorm_hiddenstates_1.value,'dlarray') && any(dims(layernorm_hiddenstates_1.value) == 'U'))

@@ -40,7 +40,7 @@ classdef aten__linear44 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [linear_input_1] = tracedPyTorchFunction(obj,linear_argument1_1,false,"predict");
 
-            [linear_input_1_rank] = ones([1,linear_input_1.rank], 'single');
+            [linear_input_1_rank] = segformer_eager.ops.onesRankLike(linear_input_1.rank, linear_input_1.value);
             linear_input_1_rank = dlarray(linear_input_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(linear_input_1.value,'dlarray') && any(dims(linear_input_1.value) == 'U'))
@@ -61,7 +61,7 @@ classdef aten__linear44 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [linear_input_1] = tracedPyTorchFunction(obj,linear_argument1_1,true,"forward");
 
-            [linear_input_1_rank] = ones([1,linear_input_1.rank], 'single');
+            [linear_input_1_rank] = segformer_eager.ops.onesRankLike(linear_input_1.rank, linear_input_1.value);
             linear_input_1_rank = dlarray(linear_input_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(linear_input_1.value,'dlarray') && any(dims(linear_input_1.value) == 'U'))

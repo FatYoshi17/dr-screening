@@ -51,7 +51,7 @@ classdef modelingsegformer_torchmangle113_SegformerDepthWiseConv < nnet.layer.La
 
             [transpose_35] = tracedPyTorchFunction(obj,size_argument1_1, ListConstruct_argument2_1, ListConstruct_argument3_1,false,"predict");
 
-            [transpose_35_rank] = ones([1,transpose_35.rank], 'single');
+            [transpose_35_rank] = segformer_eager.ops.onesRankLike(transpose_35.rank, transpose_35.value);
             transpose_35_rank = dlarray(transpose_35_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(transpose_35.value,'dlarray') && any(dims(transpose_35.value) == 'U'))
@@ -80,7 +80,7 @@ classdef modelingsegformer_torchmangle113_SegformerDepthWiseConv < nnet.layer.La
 
             [transpose_35] = tracedPyTorchFunction(obj,size_argument1_1, ListConstruct_argument2_1, ListConstruct_argument3_1,true,"forward");
 
-            [transpose_35_rank] = ones([1,transpose_35.rank], 'single');
+            [transpose_35_rank] = segformer_eager.ops.onesRankLike(transpose_35.rank, transpose_35.value);
             transpose_35_rank = dlarray(transpose_35_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(transpose_35.value,'dlarray') && any(dims(transpose_35.value) == 'U'))

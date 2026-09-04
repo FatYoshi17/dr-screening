@@ -42,7 +42,7 @@ classdef aten__layer_norm103 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [layernorm_input0_1] = tracedPyTorchFunction(obj,layernorm_input_1,false,"predict");
 
-            [layernorm_input0_1_rank] = ones([1,layernorm_input0_1.rank], 'single');
+            [layernorm_input0_1_rank] = segformer_eager.ops.onesRankLike(layernorm_input0_1.rank, layernorm_input0_1.value);
             layernorm_input0_1_rank = dlarray(layernorm_input0_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(layernorm_input0_1.value,'dlarray') && any(dims(layernorm_input0_1.value) == 'U'))
@@ -63,7 +63,7 @@ classdef aten__layer_norm103 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [layernorm_input0_1] = tracedPyTorchFunction(obj,layernorm_input_1,true,"forward");
 
-            [layernorm_input0_1_rank] = ones([1,layernorm_input0_1.rank], 'single');
+            [layernorm_input0_1_rank] = segformer_eager.ops.onesRankLike(layernorm_input0_1.rank, layernorm_input0_1.value);
             layernorm_input0_1_rank = dlarray(layernorm_input0_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(layernorm_input0_1.value,'dlarray') && any(dims(layernorm_input0_1.value) == 'U'))

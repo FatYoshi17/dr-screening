@@ -40,7 +40,7 @@ classdef aten__dropout120 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [dropout_input_1] = tracedPyTorchFunction(obj,dropout_argument1_1,false,"predict");
 
-            [dropout_input_1_rank] = ones([1,dropout_input_1.rank], 'single');
+            [dropout_input_1_rank] = segformer_eager.ops.onesRankLike(dropout_input_1.rank, dropout_input_1.value);
             dropout_input_1_rank = dlarray(dropout_input_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(dropout_input_1.value,'dlarray') && any(dims(dropout_input_1.value) == 'U'))
@@ -61,7 +61,7 @@ classdef aten__dropout120 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [dropout_input_1] = tracedPyTorchFunction(obj,dropout_argument1_1,true,"forward");
 
-            [dropout_input_1_rank] = ones([1,dropout_input_1.rank], 'single');
+            [dropout_input_1_rank] = segformer_eager.ops.onesRankLike(dropout_input_1.rank, dropout_input_1.value);
             dropout_input_1_rank = dlarray(dropout_input_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(dropout_input_1.value,'dlarray') && any(dims(dropout_input_1.value) == 'U'))

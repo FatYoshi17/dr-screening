@@ -43,7 +43,7 @@ classdef aten__add30 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [add_47] = tracedPyTorchFunction(obj,add_41, add_input_1,false,"predict");
 
-            [add_47_rank] = ones([1,add_47.rank], 'single');
+            [add_47_rank] = segformer_eager.ops.onesRankLike(add_47.rank, add_47.value);
             add_47_rank = dlarray(add_47_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(add_47.value,'dlarray') && any(dims(add_47.value) == 'U'))
@@ -68,7 +68,7 @@ classdef aten__add30 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [add_47] = tracedPyTorchFunction(obj,add_41, add_input_1,true,"forward");
 
-            [add_47_rank] = ones([1,add_47.rank], 'single');
+            [add_47_rank] = segformer_eager.ops.onesRankLike(add_47.rank, add_47.value);
             add_47_rank = dlarray(add_47_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(add_47.value,'dlarray') && any(dims(add_47.value) == 'U'))

@@ -53,7 +53,7 @@ classdef modelingsegformer_torchmangle131_SegformerAttention < nnet.layer.Layer 
 
             [CallMethod_114] = tracedPyTorchFunction(obj,size_argument1_1,false,"predict");
 
-            [CallMethod_114_rank] = ones([1,CallMethod_114.rank], 'single');
+            [CallMethod_114_rank] = segformer_eager.ops.onesRankLike(CallMethod_114.rank, CallMethod_114.value);
             CallMethod_114_rank = dlarray(CallMethod_114_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(CallMethod_114.value,'dlarray') && any(dims(CallMethod_114.value) == 'U'))
@@ -74,7 +74,7 @@ classdef modelingsegformer_torchmangle131_SegformerAttention < nnet.layer.Layer 
 
             [CallMethod_114] = tracedPyTorchFunction(obj,size_argument1_1,true,"forward");
 
-            [CallMethod_114_rank] = ones([1,CallMethod_114.rank], 'single');
+            [CallMethod_114_rank] = segformer_eager.ops.onesRankLike(CallMethod_114.rank, CallMethod_114.value);
             CallMethod_114_rank = dlarray(CallMethod_114_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(CallMethod_114.value,'dlarray') && any(dims(CallMethod_114.value) == 'U'))

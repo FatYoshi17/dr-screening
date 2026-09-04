@@ -48,7 +48,7 @@ classdef modelingsegformer_torchmangle162_SegformerStage < nnet.layer.Layer & nn
 
             [contiguous_encoderhiddenstate_1] = tracedPyTorchFunction(obj,CallMethod_argument1_1,false,"predict");
 
-            [contiguous_encoderhiddenstate_1_rank] = ones([1,contiguous_encoderhiddenstate_1.rank], 'single');
+            [contiguous_encoderhiddenstate_1_rank] = segformer_eager.ops.onesRankLike(contiguous_encoderhiddenstate_1.rank, contiguous_encoderhiddenstate_1.value);
             contiguous_encoderhiddenstate_1_rank = dlarray(contiguous_encoderhiddenstate_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(contiguous_encoderhiddenstate_1.value,'dlarray') && any(dims(contiguous_encoderhiddenstate_1.value) == 'U'))
@@ -72,7 +72,7 @@ classdef modelingsegformer_torchmangle162_SegformerStage < nnet.layer.Layer & nn
 
             [contiguous_encoderhiddenstate_1] = tracedPyTorchFunction(obj,CallMethod_argument1_1,true,"forward");
 
-            [contiguous_encoderhiddenstate_1_rank] = ones([1,contiguous_encoderhiddenstate_1.rank], 'single');
+            [contiguous_encoderhiddenstate_1_rank] = segformer_eager.ops.onesRankLike(contiguous_encoderhiddenstate_1.rank, contiguous_encoderhiddenstate_1.value);
             contiguous_encoderhiddenstate_1_rank = dlarray(contiguous_encoderhiddenstate_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(contiguous_encoderhiddenstate_1.value,'dlarray') && any(dims(contiguous_encoderhiddenstate_1.value) == 'U'))

@@ -39,7 +39,7 @@ classdef aten__gelu25 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [gelu_4] = tracedPyTorchFunction(obj,gelu_argument1_1,false,"predict");
 
-            [gelu_4_rank] = ones([1,gelu_4.rank], 'single');
+            [gelu_4_rank] = segformer_eager.ops.onesRankLike(gelu_4.rank, gelu_4.value);
             gelu_4_rank = dlarray(gelu_4_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(gelu_4.value,'dlarray') && any(dims(gelu_4.value) == 'U'))
@@ -60,7 +60,7 @@ classdef aten__gelu25 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [gelu_4] = tracedPyTorchFunction(obj,gelu_argument1_1,true,"forward");
 
-            [gelu_4_rank] = ones([1,gelu_4.rank], 'single');
+            [gelu_4_rank] = segformer_eager.ops.onesRankLike(gelu_4.rank, gelu_4.value);
             gelu_4_rank = dlarray(gelu_4_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(gelu_4.value,'dlarray') && any(dims(gelu_4.value) == 'U'))

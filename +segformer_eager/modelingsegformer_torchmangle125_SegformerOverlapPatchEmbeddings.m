@@ -47,7 +47,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
 
             [CallMethod_42, Int_21, Int_34, Int_18, Int_31, Int_15, Int_28] = tracedPyTorchFunction(obj,CallMethod_argument1_1,false,"predict");
 
-            [CallMethod_42_rank] = ones([1,CallMethod_42.rank], 'single');
+            [CallMethod_42_rank] = segformer_eager.ops.onesRankLike(CallMethod_42.rank, CallMethod_42.value);
             CallMethod_42_rank = dlarray(CallMethod_42_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(CallMethod_42.value,'dlarray') && any(dims(CallMethod_42.value) == 'U'))
@@ -55,7 +55,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 CallMethod_42 = dlarray(single(CallMethod_42.value), 'UU');
             end
-            [Int_21_rank] = ones([1,Int_21.rank], 'single');
+            [Int_21_rank] = segformer_eager.ops.onesRankLike(Int_21.rank, Int_21.value);
             Int_21_rank = dlarray(Int_21_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_21.value,'dlarray') && any(dims(Int_21.value) == 'U'))
@@ -63,7 +63,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_21 = dlarray(single(Int_21.value), 'UU');
             end
-            [Int_34_rank] = ones([1,Int_34.rank], 'single');
+            [Int_34_rank] = segformer_eager.ops.onesRankLike(Int_34.rank, Int_34.value);
             Int_34_rank = dlarray(Int_34_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_34.value,'dlarray') && any(dims(Int_34.value) == 'U'))
@@ -71,7 +71,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_34 = dlarray(single(Int_34.value), 'UU');
             end
-            [Int_18_rank] = ones([1,Int_18.rank], 'single');
+            [Int_18_rank] = segformer_eager.ops.onesRankLike(Int_18.rank, Int_18.value);
             Int_18_rank = dlarray(Int_18_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_18.value,'dlarray') && any(dims(Int_18.value) == 'U'))
@@ -79,7 +79,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_18 = dlarray(single(Int_18.value), 'UU');
             end
-            [Int_31_rank] = ones([1,Int_31.rank], 'single');
+            [Int_31_rank] = segformer_eager.ops.onesRankLike(Int_31.rank, Int_31.value);
             Int_31_rank = dlarray(Int_31_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_31.value,'dlarray') && any(dims(Int_31.value) == 'U'))
@@ -87,7 +87,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_31 = dlarray(single(Int_31.value), 'UU');
             end
-            [Int_15_rank] = ones([1,Int_15.rank], 'single');
+            [Int_15_rank] = segformer_eager.ops.onesRankLike(Int_15.rank, Int_15.value);
             Int_15_rank = dlarray(Int_15_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_15.value,'dlarray') && any(dims(Int_15.value) == 'U'))
@@ -95,7 +95,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_15 = dlarray(single(Int_15.value), 'UU');
             end
-            [Int_28_rank] = ones([1,Int_28.rank], 'single');
+            [Int_28_rank] = segformer_eager.ops.onesRankLike(Int_28.rank, Int_28.value);
             Int_28_rank = dlarray(Int_28_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_28.value,'dlarray') && any(dims(Int_28.value) == 'U'))
@@ -119,7 +119,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
 
             [CallMethod_42, Int_21, Int_34, Int_18, Int_31, Int_15, Int_28] = tracedPyTorchFunction(obj,CallMethod_argument1_1,true,"forward");
 
-            [CallMethod_42_rank] = ones([1,CallMethod_42.rank], 'single');
+            [CallMethod_42_rank] = segformer_eager.ops.onesRankLike(CallMethod_42.rank, CallMethod_42.value);
             CallMethod_42_rank = dlarray(CallMethod_42_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(CallMethod_42.value,'dlarray') && any(dims(CallMethod_42.value) == 'U'))
@@ -127,7 +127,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 CallMethod_42 = dlarray(single(CallMethod_42.value), 'UU');
             end
-            [Int_21_rank] = ones([1,Int_21.rank], 'single');
+            [Int_21_rank] = segformer_eager.ops.onesRankLike(Int_21.rank, Int_21.value);
             Int_21_rank = dlarray(Int_21_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_21.value,'dlarray') && any(dims(Int_21.value) == 'U'))
@@ -135,7 +135,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_21 = dlarray(single(Int_21.value), 'UU');
             end
-            [Int_34_rank] = ones([1,Int_34.rank], 'single');
+            [Int_34_rank] = segformer_eager.ops.onesRankLike(Int_34.rank, Int_34.value);
             Int_34_rank = dlarray(Int_34_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_34.value,'dlarray') && any(dims(Int_34.value) == 'U'))
@@ -143,7 +143,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_34 = dlarray(single(Int_34.value), 'UU');
             end
-            [Int_18_rank] = ones([1,Int_18.rank], 'single');
+            [Int_18_rank] = segformer_eager.ops.onesRankLike(Int_18.rank, Int_18.value);
             Int_18_rank = dlarray(Int_18_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_18.value,'dlarray') && any(dims(Int_18.value) == 'U'))
@@ -151,7 +151,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_18 = dlarray(single(Int_18.value), 'UU');
             end
-            [Int_31_rank] = ones([1,Int_31.rank], 'single');
+            [Int_31_rank] = segformer_eager.ops.onesRankLike(Int_31.rank, Int_31.value);
             Int_31_rank = dlarray(Int_31_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_31.value,'dlarray') && any(dims(Int_31.value) == 'U'))
@@ -159,7 +159,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_31 = dlarray(single(Int_31.value), 'UU');
             end
-            [Int_15_rank] = ones([1,Int_15.rank], 'single');
+            [Int_15_rank] = segformer_eager.ops.onesRankLike(Int_15.rank, Int_15.value);
             Int_15_rank = dlarray(Int_15_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_15.value,'dlarray') && any(dims(Int_15.value) == 'U'))
@@ -167,7 +167,7 @@ classdef modelingsegformer_torchmangle125_SegformerOverlapPatchEmbeddings < nnet
             else
                 Int_15 = dlarray(single(Int_15.value), 'UU');
             end
-            [Int_28_rank] = ones([1,Int_28.rank], 'single');
+            [Int_28_rank] = segformer_eager.ops.onesRankLike(Int_28.rank, Int_28.value);
             Int_28_rank = dlarray(Int_28_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(Int_28.value,'dlarray') && any(dims(Int_28.value) == 'U'))

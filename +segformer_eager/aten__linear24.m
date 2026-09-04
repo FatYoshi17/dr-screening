@@ -40,7 +40,7 @@ classdef aten__linear24 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [linear_hiddenstates_1] = tracedPyTorchFunction(obj,linear_argument1_1,false,"predict");
 
-            [linear_hiddenstates_1_rank] = ones([1,linear_hiddenstates_1.rank], 'single');
+            [linear_hiddenstates_1_rank] = segformer_eager.ops.onesRankLike(linear_hiddenstates_1.rank, linear_hiddenstates_1.value);
             linear_hiddenstates_1_rank = dlarray(linear_hiddenstates_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(linear_hiddenstates_1.value,'dlarray') && any(dims(linear_hiddenstates_1.value) == 'U'))
@@ -61,7 +61,7 @@ classdef aten__linear24 < nnet.layer.Layer & nnet.layer.Formattable & ...
 
             [linear_hiddenstates_1] = tracedPyTorchFunction(obj,linear_argument1_1,true,"forward");
 
-            [linear_hiddenstates_1_rank] = ones([1,linear_hiddenstates_1.rank], 'single');
+            [linear_hiddenstates_1_rank] = segformer_eager.ops.onesRankLike(linear_hiddenstates_1.rank, linear_hiddenstates_1.value);
             linear_hiddenstates_1_rank = dlarray(linear_hiddenstates_1_rank,'UU');
             %Permute U-labelled output to forward PyTorch dimension ordering
             if(isa(linear_hiddenstates_1.value,'dlarray') && any(dims(linear_hiddenstates_1.value) == 'U'))

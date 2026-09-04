@@ -34,7 +34,7 @@ function net = trainTrackB(cfg, outputNetPath, targetPatchCount, maxEpochs)
 %   detectMicroaneurysmsV2.
 
     if nargin < 2 || isempty(outputNetPath)
-        outputNetPath = fullfile('data', 'models', 'trackB_segformer_net.mat');
+        outputNetPath = fullfile(cfg.dataModels, 'trackB_segformer_net.mat');
     end
     if nargin < 3 || isempty(targetPatchCount)
         targetPatchCount = 6000;
@@ -50,7 +50,7 @@ function net = trainTrackB(cfg, outputNetPath, targetPatchCount, maxEpochs)
 
     lgraph = buildTrackBSegformerNetwork([], patchSize);
 
-    checkpointDir = fullfile('data', 'models', 'checkpoints_trackB');
+    checkpointDir = fullfile(cfg.dataModels, 'checkpoints_trackB');
     if ~isfolder(checkpointDir), mkdir(checkpointDir); end
 
     options = trainingOptions('adam', ...

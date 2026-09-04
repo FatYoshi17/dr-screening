@@ -25,15 +25,16 @@ function net = importSegformerPyTorch(ptPath, outputRawPath)
 %
 %   See also: exportSegformerEager.py, buildTrackBSegformerNetwork.
 
-    if nargin < 2
-        outputRawPath = fullfile('data', 'models', 'segformer_imported_raw.mat');
+    cfg = config();
+    if nargin < 2 || isempty(outputRawPath)
+        outputRawPath = fullfile(cfg.dataModels, 'segformer_imported_raw.mat');
     end
     if ~isfile(ptPath)
         error(['Traced .pt file not found at %s.\n' ...
                'Run exportSegformerEager.py first (in .venv-segformer, ' ...
                'PyTorch >= 2.8) to produce it.'], ptPath);
     end
-    if isfolder('+segformer_eager') && isfile(outputRawPath)
+    if isfolder(fullfile(cfg.root, '+segformer_eager')) && isfile(outputRawPath)
         error(['importSegformerPyTorch:AlreadySetUp'], ...
             ['Both +segformer_eager/ and %s already exist. Re-running the ' ...
              'import will silently overwrite all hand-patched fixes in ' ...

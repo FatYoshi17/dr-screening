@@ -17,13 +17,21 @@ function net = buildTrackBSegformerNetwork(rawMatPath, patchSize, outputNetPath)
 %   See also: importSegformerPyTorch, exportSegformerEager.py, trainTrackB.
 
     if nargin < 1 || isempty(rawMatPath)
-        rawMatPath = fullfile('data', 'models', 'segformer_imported_raw.mat');
+        % Absolute, not a bare relative fullfile('data',...): MATLAB's
+        % run() temporarily cds into the calling script's own folder
+        % while it executes, so a relative default here silently
+        % resolves against the wrong directory when this function is
+        % invoked (even indirectly, via trainTrackB) from a script
+        % launched with run('module2_segmentation/.../foo.m').
+        cfg = config();
+        rawMatPath = fullfile(cfg.dataModels, 'segformer_imported_raw.mat');
     end
     if nargin < 2 || isempty(patchSize)
         patchSize = 512;
     end
-    if nargin < 3
-        outputNetPath = fullfile('data', 'models', 'segformer_ma_imported.mat');
+    if nargin < 3 || isempty(outputNetPath)
+        cfg = config();
+        outputNetPath = fullfile(cfg.dataModels, 'segformer_ma_imported.mat');
     end
     if ~isfile(rawMatPath)
         error(['Raw import not found at %s.\n' ...

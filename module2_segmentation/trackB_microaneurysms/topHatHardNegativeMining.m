@@ -35,7 +35,7 @@ function hardNegativePatches = topHatHardNegativeMining(imageDir, labelDir, patc
         end
         imgPath = fullfile(imageDir, imageFiles(i).name);
         [~, baseName, ~] = fileparts(imageFiles(i).name);
-        lblPath = fullfile(labelDir, [baseName '_vessel.png']); % Refined IDRiD naming convention
+        lblPath = fullfile(labelDir, [baseName '_MA.tif']); % IDRiD segmentation-set naming convention
 
         if ~isfile(lblPath)
             continue;
@@ -43,8 +43,7 @@ function hardNegativePatches = topHatHardNegativeMining(imageDir, labelDir, patc
 
         img = imread(imgPath);
         gray = im2double(rgb2gray(img));
-        label = imread(lblPath);
-        trueMaMask = (label == 255); % MA class per Refined IDRiD's Table 2 scheme
+        trueMaMask = logical(imread(lblPath));
 
         % Top-hat highlights small dark blobs (MAs are dark against the
         % retina) - use the complement so dark spots become bright

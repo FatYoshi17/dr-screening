@@ -1,13 +1,23 @@
-function net = trainTrackB(cfg, outputNetPath)
-%TRAINTRACKB Fine-tune Track B's imported SegFormer on Refined IDRiD's MA channel.
-%   net = trainTrackB(cfg) builds a training patch set from Refined
-%   IDRiD (positive-biased sliding-window patches + offline top-hat
-%   hard negatives), then fine-tunes the pretrained SegFormer-B0 encoder
+function net = trainTrackB(cfg, outputNetPath, targetPatchCount, maxEpochs)
+%TRAINTRACKB Fine-tune Track B's imported SegFormer on IDRiD's microaneurysm ground truth.
+%   net = trainTrackB(cfg) builds a training patch set from IDRiD's
+%   segmentation set (positive-biased sliding-window patches around real
+%   "1. Microaneurysms" ground truth + offline top-hat hard negatives -
+%   NOT Refined IDRiD, whose Labels folder only has vessel masks), then
+%   fine-tunes the pretrained SegFormer-B0 encoder
 %   imported via buildTrackBSegformerNetwork.m (importNetworkFromPyTorch
 %   on a torch.jit.trace export - see docs/segformer_onnx_issue.md for
 %   why the original ONNX import path was dropped, and the comments in
 %   +segformer_eager/*.m for the MATLAB dlnetwork dispatch bugs that had
 %   to be worked around to make the import actually run).
+%
+%   net = trainTrackB(cfg, outputNetPath, targetPatchCount, maxEpochs)
+%   overrides the default 6000-patch / 20-epoch schedule. Worth doing:
+%   training runs at MiniBatchSize=1 (see options below for why), which
+%   on a 6GB laptop GPU measures ~5.5s/iteration for this model, so the
+%   full default schedule is a ~166-hour run - plan targetPatchCount and
+%   maxEpochs around your actual time budget and hardware instead of
+%   assuming the defaults are practical to run as-is.
 %
 %   Requires: GPU strongly recommended. Does not run inside the cloud
 %   sandbox that generated this code - run on your own machine/cloud.
@@ -23,14 +33,20 @@ function net = trainTrackB(cfg, outputNetPath)
 %   extractSlidingWindowPatches, topHatHardNegativeMining,
 %   detectMicroaneurysmsV2.
 
-    if nargin < 2
+    if nargin < 2 || isempty(outputNetPath)
         outputNetPath = fullfile('data', 'models', 'trackB_segformer_net.mat');
+    end
+    if nargin < 3 || isempty(targetPatchCount)
+        targetPatchCount = 6000;
+    end
+    if nargin < 4 || isempty(maxEpochs)
+        maxEpochs = 20;
     end
 
     patchSize = 512;
 
-    fprintf('Building Track B training patch set (positive-biased)...\n');
-    [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize);
+    fprintf('Building Track B training patch set (positive-biased, target %d patches)...\n', targetPatchCount);
+    [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize, targetPatchCount);
 
     lgraph = buildTrackBSegformerNetwork([], patchSize);
 
@@ -42,14 +58,14 @@ function net = trainTrackB(cfg, outputNetPath)
         'LearnRateSchedule', 'piecewise', ...
         'LearnRateDropFactor', 0.5, ...
         'LearnRateDropPeriod', 6, ...
-        'MaxEpochs', 20, ... % reduced from 60 - at 6000 patches this is an unattended overnight run, not a multi-day one
+        'MaxEpochs', maxEpochs, ...
         'MiniBatchSize', 1, ... % the imported SegFormer's generated code hardcodes batch=1 in its H/W and batch/channel derivation workarounds (see +segformer_eager/*.m comments) - batch>1 fails with a "not a perfect square" reshape error. Fixing this for arbitrary batch sizes would mean re-deriving batch dynamically at ~20+ call sites; not worth it for a model this size where batch=1 trains fine, just slower/noisier gradients.
         'Shuffle', 'every-epoch', ...
         'ExecutionEnvironment', 'auto', ...
         'CheckpointPath', checkpointDir, ...
         'CheckpointFrequency', 1, ...
         'CheckpointFrequencyUnit', 'epoch', ...
-        'Plots', 'training-progress', ...
+        'Plots', 'none', ... % headless-safe (no figure window); rely on 'Verbose' console output for progress instead
         'Verbose', true);
 
     trainingData = combine(patchImages, patchLabels);
@@ -63,13 +79,22 @@ function net = trainTrackB(cfg, outputNetPath)
     fprintf('Saved fine-tuned Track B network to %s\n', outputNetPath);
 end
 
-function [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize)
+function [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize, targetPatchCount)
 %BUILDTRACKBPATCHSET Assemble a positive-biased + hard-negative patch datastore.
 
     positiveRatio = 0.5; % half the training patches deliberately contain a labeled MA
-    targetPatchCount = 6000;
 
-    imageFiles = dir(fullfile(cfg.refinedIdridTrainImg, '*.jpg'));
+    % Refined IDRiD's Labels folder only has *_vessel.png (vessel masks,
+    % used by Track A) - no microaneurysm ground truth. The real MA
+    % masks live in the original (non-refined) IDRiD segmentation set,
+    % one lesion type per subfolder; use that directly instead, at full
+    % resolution (cropAroundPoint pulls a local patchSize window, so
+    % there's no alignment concern from mixing image sources like there
+    % would be with Refined IDRiD's separately-resized copies).
+    imageDir = cfg.idridSegImagesTrain;
+    maGroundtruthDir = fullfile(cfg.idridSegGroundtruthTrain, '1. Microaneurysms');
+
+    imageFiles = dir(fullfile(imageDir, '*.jpg'));
     allImages = {};
     allLabels = {};
 
@@ -78,14 +103,13 @@ function [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize)
 
     for i = 1:numel(imageFiles)
         [~, baseName, ~] = fileparts(imageFiles(i).name);
-        imgPath = fullfile(cfg.refinedIdridTrainImg, imageFiles(i).name);
-        lblPath = fullfile(cfg.refinedIdridTrainLbl, [baseName '_vessel.png']);
+        imgPath = fullfile(imageDir, imageFiles(i).name);
+        lblPath = fullfile(maGroundtruthDir, [baseName '_MA.tif']);
         if ~isfile(lblPath)
             continue;
         end
         img = imread(imgPath);
-        label = imread(lblPath);
-        maMask = (label == 255);
+        maMask = logical(imread(lblPath));
 
         cc = bwconncomp(maMask);
         stats = regionprops(cc, 'Centroid');
@@ -105,7 +129,7 @@ function [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize)
     % Hard negatives via offline top-hat mining (see its own docstring
     % for why this is safe to use here without reintroducing a recall
     % ceiling - it never gates inference, only enriches training data).
-    hardNeg = topHatHardNegativeMining(cfg.refinedIdridTrainImg, cfg.refinedIdridTrainLbl, ...
+    hardNeg = topHatHardNegativeMining(imageDir, maGroundtruthDir, ...
         patchSize, round(targetPatchCount * (1 - positiveRatio) * 0.5));
     for i = 1:numel(hardNeg)
         allImages{end+1} = hardNeg(i).image; %#ok<AGROW>
@@ -117,7 +141,7 @@ function [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize)
     nPlainNegatives = targetPatchCount - numel(allImages);
     for i = 1:max(nPlainNegatives, 0)
         randIdx = randi(numel(imageFiles));
-        img = imread(fullfile(cfg.refinedIdridTrainImg, imageFiles(randIdx).name));
+        img = imread(fullfile(imageDir, imageFiles(randIdx).name));
         [H, W, ~] = size(img);
         if H < patchSize || W < patchSize, continue; end
         r = randi(H - patchSize + 1);

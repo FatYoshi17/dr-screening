@@ -2,7 +2,7 @@ function test_module2()
 %TEST_MODULE2 Smoke test for Module 2 on a synthetic image.
 %   Confirms every Module 2 function runs and returns sane shapes/ranges.
 %   NOT a substitute for accuracy validation against IDRiD/DRIVE ground
-%   truth (see docs/status_vs_roadmap.md and src/common/metrics.m).
+%   truth (see docs/status_vs_roadmap.md and common/metrics.m).
 
     img = ioUtils('synthetic', 256);
     mask = fovMask(img);

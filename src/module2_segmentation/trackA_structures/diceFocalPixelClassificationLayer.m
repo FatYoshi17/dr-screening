@@ -39,18 +39,31 @@ classdef diceFocalPixelClassificationLayer < nnet.layer.ClassificationLayer
             % T: one-hot ground truth, HxWxKxN
             eps_ = layer.SmoothingFactor;
 
+            % Pixels with no valid one-hot label (all-zero across
+            % classes) show up after rotation/scale augmentation, whose
+            % rotated corners have nothing to fill them with - a
+            % handful of pixels per image, not a data bug. Left
+            % unhandled, pt=0 there -> log(0)=-Inf -> the whole batch's
+            % loss goes Inf/NaN and training halts on iteration 1-2.
+            % Excluded from both loss terms via a validity mask instead
+            % of assuming every pixel has a label.
+            validMask = sum(T, 3) > 0; % HxWx1xN
+
             % ---- Dice loss, averaged over classes and batch ----
-            intersection = sum(sum(Y .* T, 1), 2);          % 1x1xKxN
-            unionSum = sum(sum(Y, 1), 2) + sum(sum(T, 1), 2); % 1x1xKxN
+            Ymasked = Y .* validMask;
+            intersection = sum(sum(Ymasked .* T, 1), 2);          % 1x1xKxN
+            unionSum = sum(sum(Ymasked, 1), 2) + sum(sum(T, 1), 2); % 1x1xKxN
             diceCoeff = (2 * intersection + eps_) ./ (unionSum + eps_);
             diceLoss = 1 - mean(diceCoeff(:));
 
             % ---- Focal loss ----
             Yclipped = max(min(Y, 1 - 1e-7), 1e-7);
             pt = sum(Yclipped .* T, 3);                       % HxWx1xN, prob assigned to true class
+            pt = max(pt, 1e-7);                               % avoid log(0) at invalid (all-zero-T) pixels
             focalWeight = (1 - pt) .^ layer.FocalGamma;
-            focalLossMap = -focalWeight .* log(pt);
-            focalLoss = mean(focalLossMap(:));
+            focalLossMap = -focalWeight .* log(pt) .* validMask;
+            numValid = max(sum(validMask, 'all'), 1);
+            focalLoss = sum(focalLossMap, 'all') / numValid;
 
             loss = layer.DiceWeight * diceLoss + (1 - layer.DiceWeight) * focalLoss;
         end

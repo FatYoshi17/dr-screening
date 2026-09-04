@@ -95,12 +95,18 @@ function model = trainOrdinalQualityModel(eyeQImageDir, eyeQLabelsCsv, outputMod
 
     y = categorical(ordinalLabel, {'Reject', 'Enhance', 'Pass'}, 'Ordinal', true);
 
-    fprintf('Fitting ridge-regularized ordinal logistic regression on %d samples...\n', numel(y));
+    % fitmnr has no 'Regularization'/'Lambda' name-value pair in this
+    % MATLAB version (verified via help fitmnr - its actual options are
+    % CategoricalPredictors, EstimateDispersion,
+    % IncludeClassInteractions, IterationLimit, Link, ModelType,
+    % PredictorNames, ResponseName, Tolerance, Weights). The original
+    % "ridge-regularized" design assumed a parameter that doesn't exist
+    % here - dropped rather than faked. With 12.5k samples and only 5
+    % predictors, overfitting risk without it is low.
+    fprintf('Fitting ordinal logistic regression on %d samples...\n', numel(y));
     ordinalModel = fitmnr(X, y, ...
         'ModelType', 'ordinal', ...
-        'Link', 'logit', ...
-        'Regularization', 'ridge', ...
-        'Lambda', 0.05);
+        'Link', 'logit');
 
     model.normParams = normParams;
     model.ordinalModel = ordinalModel;

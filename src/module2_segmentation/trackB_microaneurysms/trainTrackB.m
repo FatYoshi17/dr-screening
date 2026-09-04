@@ -1,9 +1,10 @@
-function net = trainTrackB(cfg, importedNetPath, outputNetPath)
-%TRAINTRACKB Fine-tune the imported SegFormer on Refined IDRiD's MA channel.
-%   net = trainTrackB(cfg, importedNetPath) builds a training patch set
-%   from Refined IDRiD (positive-biased sliding-window patches + offline
-%   top-hat hard negatives), then fine-tunes the SegFormer network
-%   imported by importSegformerMATLAB.m.
+function net = trainTrackB(cfg, outputNetPath)
+%TRAINTRACKB Train Track B's native CBAM CNN on Refined IDRiD's MA channel.
+%   net = trainTrackB(cfg) builds a training patch set from Refined
+%   IDRiD (positive-biased sliding-window patches + offline top-hat
+%   hard negatives), then trains buildTrackBNetwork.m's CBAM-attention
+%   CNN from scratch (no ONNX import step - see buildTrackBNetwork.m's
+%   docstring for why the original SegFormer/ONNX path was dropped).
 %
 %   Requires: GPU strongly recommended. Does not run inside the cloud
 %   sandbox that generated this code - run on your own machine/cloud.
@@ -15,13 +16,10 @@ function net = trainTrackB(cfg, importedNetPath, outputNetPath)
 %   sampler would let the network learn to just predict "nothing"
 %   everywhere and still look accurate.
 %
-%   See also: importSegformerMATLAB, extractSlidingWindowPatches,
+%   See also: buildTrackBNetwork, extractSlidingWindowPatches,
 %   topHatHardNegativeMining, detectMicroaneurysmsV2.
 
-    if nargin < 2 || isempty(importedNetPath)
-        importedNetPath = fullfile('data', 'models', 'segformer_ma_imported.mat');
-    end
-    if nargin < 3
+    if nargin < 2
         outputNetPath = fullfile('data', 'models', 'trackB_segformer_net.mat');
     end
 
@@ -30,18 +28,23 @@ function net = trainTrackB(cfg, importedNetPath, outputNetPath)
     fprintf('Building Track B training patch set (positive-biased)...\n');
     [patchImages, patchLabels] = buildTrackBPatchSet(cfg, patchSize);
 
-    loaded = load(importedNetPath, 'net');
-    lgraph = loaded.net;
+    lgraph = buildTrackBNetwork(patchSize);
+
+    checkpointDir = fullfile('data', 'models', 'checkpoints_trackB');
+    if ~isfolder(checkpointDir), mkdir(checkpointDir); end
 
     options = trainingOptions('adam', ...
-        'InitialLearnRate', 5e-5, ... % lower LR - fine-tuning a pretrained transformer, not training from scratch
+        'InitialLearnRate', 1e-3, ... % training from scratch (no pretrained transformer to fine-tune), higher LR than the original SegFormer fine-tune
         'LearnRateSchedule', 'piecewise', ...
         'LearnRateDropFactor', 0.5, ...
-        'LearnRateDropPeriod', 10, ...
-        'MaxEpochs', 40, ...
-        'MiniBatchSize', 4, ...
+        'LearnRateDropPeriod', 6, ...
+        'MaxEpochs', 20, ... % reduced from 60 - at 6000 patches this is an unattended overnight run, not a multi-day one
+        'MiniBatchSize', 4, ... % verified OOM-safe on this 6GB laptop GPU (Track A's earlier OOM was specific to its much heavier decoder)
         'Shuffle', 'every-epoch', ...
         'ExecutionEnvironment', 'auto', ...
+        'CheckpointPath', checkpointDir, ...
+        'CheckpointFrequency', 1, ...
+        'CheckpointFrequencyUnit', 'epoch', ...
         'Plots', 'training-progress', ...
         'Verbose', true);
 

@@ -57,10 +57,16 @@ function model = trainGradingCNN(aptosImageDir, aptosLabelsCsv, outputModelPath)
     valIdx = idx(1:nVal);
     trainIdx = idx(nVal+1:end);
 
-    imdsTrain = imageDatastore(imagePaths(trainIdx));
-    imdsVal   = imageDatastore(imagePaths(valIdx));
     yTrain = grades(trainIdx);
     yVal   = grades(valIdx);
+
+    % augmentedImageDatastore(outputSize, imds, Y) is not a valid
+    % overload - "Responses cannot be specified when second input
+    % argument is a matlab.io.datastore.ImageDatastore" (only a 4-D
+    % numeric array or a table can carry separate responses). Using the
+    % table+responseNames overload instead.
+    trainTbl = table(imagePaths(trainIdx), yTrain, 'VariableNames', {'image', 'grade'});
+    valTbl   = table(imagePaths(valIdx), yVal, 'VariableNames', {'image', 'grade'});
 
     inputSize = [512 512 3]; % matches the winning solutions' minimal-preprocessing resize
     augmenter = imageDataAugmenter( ...
@@ -68,10 +74,13 @@ function model = trainGradingCNN(aptosImageDir, aptosLabelsCsv, outputModelPath)
         'RandRotation', [-20 20], ...
         'RandXScale', [0.9 1.1], ...
         'RandYScale', [0.9 1.1]);
-    augTrainDs = augmentedImageDatastore(inputSize, imdsTrain, yTrain, 'DataAugmentation', augmenter);
-    augValDs   = augmentedImageDatastore(inputSize, imdsVal, yVal);
+    augTrainDs = augmentedImageDatastore(inputSize, trainTbl, 'grade', 'DataAugmentation', augmenter);
+    augValDs   = augmentedImageDatastore(inputSize, valTbl, 'grade');
 
     lgraph = buildGradingRegressionNetwork(inputSize);
+
+    checkpointDir = fullfile('data', 'models', 'checkpoints_module3');
+    if ~isfolder(checkpointDir), mkdir(checkpointDir); end
 
     options = trainingOptions('adam', ...
         'InitialLearnRate', 1e-4, ...
@@ -79,11 +88,14 @@ function model = trainGradingCNN(aptosImageDir, aptosLabelsCsv, outputModelPath)
         'LearnRateDropFactor', 0.5, ...
         'LearnRateDropPeriod', 8, ...
         'MaxEpochs', 30, ...
-        'MiniBatchSize', 8, ...
+        'MiniBatchSize', 4, ... % dropped from 8 for GPU memory safety on this 6GB laptop GPU, unattended overnight run
         'Shuffle', 'every-epoch', ...
         'ValidationData', augValDs, ...
         'ValidationFrequency', 50, ...
         'ExecutionEnvironment', 'auto', ...
+        'CheckpointPath', checkpointDir, ...
+        'CheckpointFrequency', 3, ...
+        'CheckpointFrequencyUnit', 'epoch', ...
         'Plots', 'training-progress', ...
         'Verbose', true);
 
@@ -108,6 +120,11 @@ function model = trainGradingCNN(aptosImageDir, aptosLabelsCsv, outputModelPath)
 end
 
 function lgraph = buildGradingRegressionNetwork(inputSize)
+    % Verified against this MATLAB install (R2025a): 'input_1' and
+    % 'activation_49_relu' both exist exactly as assumed, and the
+    % default head layers {'avg_pool','fc1000','fc1000_softmax',
+    % 'ClassificationLayer_fc1000'} match too - unlike Track A's decoder
+    % splice point, this part of the original design was correct.
     baseNet = resnet50('Weights', 'imagenet');
     lgraph = layerGraph(baseNet);
     lgraph = replaceLayer(lgraph, 'input_1', imageInputLayer(inputSize, 'Name', 'input_1', ...

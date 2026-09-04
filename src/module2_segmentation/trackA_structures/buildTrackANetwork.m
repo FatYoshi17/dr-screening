@@ -6,11 +6,14 @@ function lgraph = buildTrackANetwork(imageSize, classNames)
 %     background, VH, retina, fovea, vessel, OD, EX, IRMA, HE, NV, CWS
 %   -> 11 classes total.
 %
-%   imageSize: e.g. [1024 1024 3] to match Refined IDRiD's mask resolution.
+%   imageSize: e.g. [512 512 3] (reduced from Refined IDRiD's native
+%   1024x1024 - training at full resolution ran out of memory on a 6GB
+%   laptop GPU).
 %   classNames: cellstr of the 11 class names, background first.
 %
 %   Requires: Computer Vision Toolbox (deeplabv3plusLayers), Deep
-%   Learning Toolbox.
+%   Learning Toolbox, and the "Deep Learning Toolbox Model for ResNet-18
+%   Network" support package (for pretrained ImageNet weights).
 %
 %   Base network is DeepLabv3+ on a resnet18 encoder - resnet18 rather
 %   than resnet34/EfficientNet-B0 as earlier discussed, because
@@ -26,23 +29,43 @@ function lgraph = buildTrackANetwork(imageSize, classNames)
 %     -> diceFocalPixelClassificationLayer
 %   replacing the default cross-entropy pixel classification layer.
 %
+%   LAYER NAME NOTE: verified directly against this MATLAB install
+%   (R2025a) two ways - lgraph.Layers AND lgraph.Connections (the
+%   listing order doesn't reflect real topology for a branching graph
+%   like this one). Two real bugs from the first draft, caught this
+%   way: (1) the default classification output layer is named
+%   'classification', not 'labels' as assumed - removeLayers with a
+%   nonexistent name would have errored immediately. (2) 'dec_relu2' is
+%   NOT the decoder's final feature as the original comment claimed -
+%   tracing lgraph.Connections shows it's the LOW-LEVEL SKIP branch
+%   (fed from res2b_relu, channel-reduced), which merges via 'dec_cat1'
+%   with the upsampled ASPP path and then runs through two more conv
+%   blocks (dec_c3, dec_c4) before 'scorer'. Splicing attention in after
+%   'dec_relu2' as originally written would have attached the
+%   attention+scoring head to only the low-level skip path, bypassing
+%   the ASPP fusion entirely - a silently-broken architecture, not just
+%   a crash. The real final decoder feature, right before 'scorer', is
+%   'dec_relu4'.
+%
 %   See also: cbamLayer, multiScaleAttentionLayer,
 %   diceFocalPixelClassificationLayer, trainTrackA.
 
     numClasses = numel(classNames);
 
-    baseNet = deeplabv3plusLayers(imageSize, numClasses, 'resnet18');
-    lgraph = layerGraph(baseNet);
+    % deeplabv3plusLayers already returns a layerGraph directly (not raw
+    % layers) - wrapping it in layerGraph() again errors.
+    lgraph = deeplabv3plusLayers(imageSize, numClasses, 'resnet18');
 
-    % The layer immediately upstream of the default classification head
-    % in MATLAB's deeplabv3plusLayers output is named 'scorer' (1x1 conv
-    % to numClasses) preceded by 'dec_relu2'. We splice our attention
-    % blocks in right after the decoder's last ReLU, before that final
-    % scoring conv, then rebuild the head ourselves.
-    decoderFeatureLayerName = 'dec_relu2';
-    decoderChannels = 256; % deeplabv3plusLayers' decoder output channel count
+    decoderFeatureLayerName = 'dec_relu4';
+    decoderChannels = 256; % dec_c4's NumFilters - verified against this install, not assumed
 
-    lgraph = removeLayers(lgraph, {'scorer', 'softmax-out', 'labels'});
+    % Only remove the scoring conv + its output layers - 'dec_upsample2'
+    % and 'dec_crop2' stay, since they're what brings the prediction
+    % back up to full input resolution (dec_crop2 references 'data' for
+    % exact pixel alignment). Removing them too (as an earlier version
+    % of this function did) leaves them dangling with an unconnected
+    % input - reuse them instead of reinventing upsampling.
+    lgraph = removeLayers(lgraph, {'scorer', 'softmax-out', 'classification'});
 
     multiScale = multiScaleAttentionLayer(decoderChannels, 'trackA_multiscale_attn');
     cbam = cbamLayer(decoderChannels, 16, 'trackA_cbam');
@@ -60,6 +83,7 @@ function lgraph = buildTrackANetwork(imageSize, classNames)
     lgraph = connectLayers(lgraph, decoderFeatureLayerName, 'trackA_multiscale_attn');
     lgraph = connectLayers(lgraph, 'trackA_multiscale_attn', 'trackA_cbam');
     lgraph = connectLayers(lgraph, 'trackA_cbam', 'trackA_final_conv');
-    lgraph = connectLayers(lgraph, 'trackA_final_conv', 'trackA_softmax');
+    lgraph = connectLayers(lgraph, 'trackA_final_conv', 'dec_upsample2');
+    lgraph = connectLayers(lgraph, 'dec_crop2', 'trackA_softmax');
     lgraph = connectLayers(lgraph, 'trackA_softmax', 'trackA_output');
 end

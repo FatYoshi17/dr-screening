@@ -29,9 +29,16 @@ function qc = assessImageQuality(rgbImage, modelPath)
         modelPath = fullfile('data', 'models', 'module1_quality_model.mat');
     end
     if ~isfile(modelPath)
-        error(['No trained Module 1 model found at %s.\n' ...
-               'Run trainOrdinalQualityModel(eyeQImageDir, eyeQLabelsCsv) first ' ...
-               '- see docs/RUN_GUIDE.md.'], modelPath);
+        persistent warned
+        if isempty(warned)
+            warning(['No trained Module 1 model at %s (needs EyeQ, not available locally) - ' ...
+                     'falling back to assessImageQualityThreshold (fixed thresholds, not ML-calibrated). ' ...
+                     'Run trainOrdinalQualityModel(eyeQImageDir, eyeQLabelsCsv) once EyeQ is in place ' ...
+                     'to switch back to the trained model automatically.'], modelPath);
+            warned = true;
+        end
+        qc = assessImageQualityThreshold(rgbImage);
+        return
     end
     loaded = load(modelPath, 'model');
     model = loaded.model;
@@ -58,6 +65,7 @@ function qc = assessImageQuality(rgbImage, modelPath)
     qc.decision = predictedClass;
     qc.classProbs = classProbs;
     qc.isGradable = (predictedClass ~= 'Reject');
+    qc.method = 'trained_ordinal';
 
     qc.failReasons = {};
     if predictedClass ~= 'Pass'

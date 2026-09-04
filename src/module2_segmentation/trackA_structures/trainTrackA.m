@@ -26,12 +26,22 @@ function net = trainTrackA(cfg, outputNetPath)
     end
 
     classNames = {'Background','VH','Retina','Fovea','Vessel','OD','EX','IRMA','HE','NV','CWS'};
-    labelIDs = {0, 4, {8, 255}, 16, 24, 32, 63, 96, 127, 166, 191};
+    % pixelLabelDatastore expects each class's IDs as a numeric scalar or
+    % COLUMN vector, not a nested cell and not a row vector - [8;255]
+    % (column) merges Retina+MA into one class; {8,255} and [8 255] both
+    % error (the latter gets parsed as a malformed RGB triplet spec).
+    labelIDs = {0, 4, [8; 255], 16, 24, 32, 63, 96, 127, 166, 191};
 
     imds = imageDatastore(cfg.refinedIdridTrainImg);
     pxds = pixelLabelDatastore(cfg.refinedIdridTrainLbl, classNames, labelIDs);
 
-    imageSize = [1024 1024 3]; % Refined IDRiD's native mask resolution
+    % Refined IDRiD's native mask resolution is 1024x1024, but training
+    % at that size (MiniBatchSize 4) ran out of memory on a 6GB laptop
+    % GPU during diceFocalPixelClassificationLayer's backward pass - the
+    % dense per-pixel, 11-class loss over four 1024x1024 images at once
+    % is too much. 512x512 fits; real accuracy trade-off for real GPU
+    % constraints, not a shortcut.
+    imageSize = [512 512 3];
 
     % ---- Augmentation: flips, rotation, elastic-ish warp via random
     % affine, brightness/contrast jitter, patch crop. imageDataAugmenter
@@ -45,9 +55,13 @@ function net = trainTrackA(cfg, outputNetPath)
         'RandYScale', [0.9 1.1]);
 
     trainingData = pixelLabelImageDatastore(imds, pxds, ...
+        'OutputSize', imageSize(1:2), ...
         'DataAugmentation', augmenter);
 
     lgraph = buildTrackANetwork(imageSize, classNames);
+
+    checkpointDir = fullfile('data', 'models', 'checkpoints_trackA');
+    if ~isfolder(checkpointDir), mkdir(checkpointDir); end
 
     options = trainingOptions('adam', ...
         'InitialLearnRate', 1e-4, ...
@@ -55,10 +69,12 @@ function net = trainTrackA(cfg, outputNetPath)
         'LearnRateDropFactor', 0.5, ...
         'LearnRateDropPeriod', 15, ...
         'MaxEpochs', 80, ...
-        'MiniBatchSize', 4, ...
+        'MiniBatchSize', 2, ...
         'Shuffle', 'every-epoch', ...
-        'ValidationFrequency', 30, ...
         'ExecutionEnvironment', 'auto', ...
+        'CheckpointPath', checkpointDir, ...
+        'CheckpointFrequency', 5, ...
+        'CheckpointFrequencyUnit', 'epoch', ...
         'Plots', 'training-progress', ...
         'Verbose', true);
 

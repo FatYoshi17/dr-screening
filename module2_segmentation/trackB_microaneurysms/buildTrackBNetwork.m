@@ -38,7 +38,17 @@ function lgraph = buildTrackBNetwork(patchSize)
     classNames = {'Background', 'Microaneurysm'};
     inputSize = [patchSize, patchSize, 3];
 
-    input = imageInputLayer(inputSize, 'Name', 'input', 'Normalization', 'zscore');
+    % 'zscore' (the original choice) requires trainNetwork to scan the
+    % entire training array up front to compute global per-channel
+    % mean/std, materializing an internal higher-precision copy of the
+    % whole dataset in the process - on a 15.6GB-RAM machine this hard-
+    % crashed MATLAB (exit 0x40010004) at 6000 patches x 512x512x3
+    % during "Initializing input data normalization", before training
+    % even started. 'rescale-zero-one' needs no dataset-wide pass (fixed
+    % 0-255 input range assumed), keeping memory flat regardless of
+    % dataset size while still giving the network a sane [0,1] input
+    % range for stable training.
+    input = imageInputLayer(inputSize, 'Name', 'input', 'Normalization', 'rescale-zero-one');
 
     stemConv = convolution2dLayer(3, 32, 'Name', 'trackB_stem_conv', 'Padding', 'same', 'WeightsInitializer', 'he');
     stemBN = batchNormalizationLayer('Name', 'trackB_stem_bn');

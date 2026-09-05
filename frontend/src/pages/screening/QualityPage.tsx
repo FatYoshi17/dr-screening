@@ -40,15 +40,7 @@ export const QualityPage: React.FC = () => {
       }
       const res = await screeningService.evaluateImageQuality(
         imageKey || undefined,
-        isDemoSample ? undefined : imageUri || undefined,
-        patient
-          ? {
-              patientId: patient.id,
-              diabetesControl: patient.diabetesControl,
-              diabetesDurationYears: patient.diabetesDurationYears,
-              hba1c: patient.hba1c
-            }
-          : undefined
+        isDemoSample ? undefined : imageUri || undefined
       );
       setQualityResult(res.status, res.reason, res.tip);
       setEvaluating(false);

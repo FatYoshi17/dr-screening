@@ -8,43 +8,28 @@ import type {
   SeverityAssessment,
   Explainability
 } from '../types';
-import { dxApiClient, type PatientContext, type DxApiResult } from './dxApiClient';
+import { dxApiClient, type PatientContext } from './dxApiClient';
 
 export const DEMO_KEYS = ['fundus-good', 'fundus-poor-blur', 'fundus-poor-dark', 'fundus-priority', 'fundus-review'];
-
-// Real captures need exactly one MATLAB pipeline invocation per image, not
-// two (quality check, then full analysis). The quality step below runs the
-// real backend and caches the full result here; analyzeScreening reuses it
-// instead of calling again, keyed on the same imageDataUrl.
-let cachedRealResult: { imageDataUrl: string; result: DxApiResult } | null = null;
-
-async function runRealPipelineOnce(imageDataUrl: string, patientContext?: PatientContext): Promise<DxApiResult> {
-  if (cachedRealResult && cachedRealResult.imageDataUrl === imageDataUrl) {
-    return cachedRealResult.result;
-  }
-  const result = await dxApiClient.screen(imageDataUrl, patientContext || {});
-  cachedRealResult = { imageDataUrl, result };
-  return result;
-}
 
 export const screeningService = {
   async evaluateImageQuality(
     imageKey?: string,
-    imageDataUrl?: string,
-    patientContext?: PatientContext
+    imageDataUrl?: string
   ): Promise<{
     status: QualityStatus;
     reason?: string;
     tip?: string;
   }> {
-    // Real captures: actually run the pipeline's quality gate (Module 1)
-    // instead of assuming a pass - a photo that isn't even a fundus image
-    // (wrong body part, wrong framing) must not be told it "looks good".
-    // The result is cached so the later analyzeScreening call for the same
-    // image reuses it rather than invoking MATLAB a second time.
+    // Real captures: run ONLY Module 1 (the fast quality-check endpoint),
+    // not the full grading pipeline - a photo that isn't even a fundus
+    // image (wrong body part, wrong framing) must not be told it "looks
+    // good", but the user also shouldn't pay the full ~20-40s pipeline
+    // cost just to find that out. The full pipeline runs separately, once,
+    // when the user continues to the actual screening (analyzeScreening).
     if (imageDataUrl && (!imageKey || !DEMO_KEYS.includes(imageKey))) {
       try {
-        const result = await runRealPipelineOnce(imageDataUrl, patientContext);
+        const result = await dxApiClient.checkQuality(imageDataUrl);
         if (result.qualityStatus === 'FAIL') {
           return {
             status: 'FAIL',
@@ -106,11 +91,12 @@ export const screeningService = {
     segmentationImageUrl?: string;
     gradCamImageUrl?: string;
   }> {
-    // Real capture (not one of the bundled demo assets): reuse the result
-    // from the quality step's real pipeline call if it already ran for
-    // this exact image, instead of invoking MATLAB a second time.
+    // Real capture (not one of the bundled demo assets): run the full
+    // pipeline (quality + segmentation + grading + explainability). The
+    // quality step already ran Module 1 alone via checkQuality - this is
+    // a separate, one-time call for the full analysis.
     if (imageDataUrl && (!imageKey || !DEMO_KEYS.includes(imageKey))) {
-      const result = await runRealPipelineOnce(imageDataUrl, patientContext);
+      const result = await dxApiClient.screen(imageDataUrl, patientContext || {});
       const confidenceIndicator =
         result.explainability?.reliabilityCategory === 'Reliable' ? 'High'
         : result.explainability?.reliabilityCategory === 'Moderate' ? 'Moderate'

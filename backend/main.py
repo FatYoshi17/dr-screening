@@ -105,6 +105,51 @@ async def screen_image(image: UploadFile = File(...), patientInfo: str = Form("{
     return result
 
 
+@app.post("/api/quality-check")
+async def quality_check(image: UploadFile = File(...)):
+    """Run ONLY Module 1 (quality gate) on an uploaded image - fast path
+    for the Quality Verification screen, which just needs to know if the
+    photo is usable, not the full grading pipeline. See
+    run_quality_check_api.m."""
+    request_id = uuid.uuid4().hex[:12]
+    work_dir = RESULTS_DIR / request_id
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    image_path = work_dir / f"input{Path(image.filename or 'image.jpg').suffix or '.jpg'}"
+    with open(image_path, "wb") as f:
+        f.write(await image.read())
+
+    output_json_path = work_dir / "quality_result.json"
+
+    matlab_cmd = (
+        f"run_quality_check_api('{_escape(str(image_path))}', "
+        f"'{_escape(str(output_json_path))}')"
+    )
+
+    try:
+        proc = subprocess.run(
+            [MATLAB_EXE, "-batch", matlab_cmd],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=MATLAB_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Quality check timed out")
+
+    if not output_json_path.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Quality check produced no result. stdout: {proc.stdout[-2000:]} stderr: {proc.stderr[-2000:]}",
+        )
+
+    result = json.loads(output_json_path.read_text())
+    if result.get("status") == "ERROR":
+        raise HTTPException(status_code=500, detail=result.get("errorMessage", "Unknown quality-check error"))
+
+    return result
+
+
 @app.get("/api/report/{request_id}")
 async def get_report(request_id: str):
     """Fetch the annotated PDF report for a previous /api/screen call."""

@@ -40,13 +40,37 @@ export interface DxApiResult {
   gradCamImageFileName?: string;
 }
 
+export interface QualityCheckResult {
+  qualityStatus: 'PASS' | 'FAIL';
+  qualityReason?: string;
+  qualityFeatures?: Array<{ name: string; score: number; assessment: 'Good' | 'Acceptable' | 'Poor' }>;
+}
+
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const res = await fetch(dataUrl);
   return res.blob();
 }
 
 export const dxApiClient = {
-  /** Runs the real pipeline on a captured/uploaded image. imageDataUrl must be a data: URL (from canvas/file capture), not a static asset path. */
+  /** Fast path for the Quality Verification screen: Module 1 (quality gate) only, not the full grading pipeline - seconds instead of the ~20-40s a full /api/screen call takes. */
+  async checkQuality(imageDataUrl: string): Promise<QualityCheckResult> {
+    const blob = await dataUrlToBlob(imageDataUrl);
+    const formData = new FormData();
+    formData.append('image', blob, 'capture.jpg');
+
+    const response = await fetch(`${API_BASE}/api/quality-check`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Quality-check backend error (${response.status}): ${detail}`);
+    }
+    return response.json();
+  },
+
+  /** Runs the full pipeline (quality + segmentation + grading + explainability) on a captured/uploaded image. imageDataUrl must be a data: URL (from canvas/file capture), not a static asset path. */
   async screen(imageDataUrl: string, patientContext: PatientContext): Promise<DxApiResult> {
     const blob = await dataUrlToBlob(imageDataUrl);
     const formData = new FormData();

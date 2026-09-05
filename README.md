@@ -16,7 +16,7 @@ background in [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 | **Module 2, Track B** — microaneurysms (SegFormer) | Import fixed and verified — **fine-tuning not yet run** | `predict()` runs end-to-end, stable non-degenerate output |
 | **Module 3** — severity grading | **Trained** (resnet50 + GeM pooling, 30 epochs) | Validation QWK **0.9156** |
 | **Module 4** — explainability (Grad-CAM, calibration) | Code complete, awaiting Module 3's calibration pass | — |
-| **Frontend** | Not built — see [frontend/README.md](frontend/README.md) | — |
+| **Frontend** | Built and wired to the real pipeline via `backend/` — see [frontend/README.md](frontend/README.md) | Real captures produce real grades/reports, not demo data |
 
 **Track B's SegFormer import is fixed.** MATLAB's ONNX converter is
 blocked by a genuine MathWorks packaging defect — the "Deep Learning
@@ -64,7 +64,8 @@ module2_segmentation/
 module3_grading/          rule-based Grade 0/1 + full-range grading CNN (resnet50) + disagreement flagging
 module4_explainability/   Grad-CAM, calibrated confidence, lesion-attention overlap, annotated report
 common/                   shared utilities: FOV mask, image I/O, metrics
-frontend/                 planned browser UI — not built yet, see frontend/README.md
+frontend/                 React/TypeScript/Vite browser UI, wired to backend/ for real screening — see frontend/README.md
+backend/                  FastAPI bridge between the frontend and the MATLAB pipeline (backend/main.py)
 scripts/                  runnable entry points (train_all_models, run_end_to_end_pipeline, app_try_it)
 tests/                    smoke tests and diagnostics written while getting each module training for real
 docs/                     RUN_GUIDE.md and other project docs

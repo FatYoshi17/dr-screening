@@ -47,6 +47,22 @@ function qc = assessImageQuality(rgbImage, modelPath)
     mask = fovMask(rgbImage);
 
     features = extractQualityFeatures(rgbImage, mask);
+
+    [plausible, implausibleReason] = checkFundusPlausibility(features);
+    if ~plausible
+        qc.fovMask = mask;
+        qc.features = features;
+        qc.featureScores = zeros(1, 5);
+        qc.featureNames = {'sharpness', 'exposure', 'contrast', 'fov', 'noise'};
+        qc.qualityScore = 0;
+        qc.decision = categorical({'Reject'}, {'Reject', 'Enhance', 'Pass'});
+        qc.classProbs = [1 0 0];
+        qc.isGradable = false;
+        qc.method = 'fundus_plausibility_gate';
+        qc.failReasons = {implausibleReason};
+        return
+    end
+
     [featureScores, featureNames] = normalizeQualityFeatures(features, model.normParams);
 
     [predictedClass, classProbs] = predict(model.ordinalModel, featureScores);

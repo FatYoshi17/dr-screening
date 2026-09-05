@@ -32,6 +32,21 @@ function qc = assessImageQualityThreshold(rgbImage)
     mask = fovMask(rgbImage);
     features = extractQualityFeatures(rgbImage, mask);
 
+    [plausible, implausibleReason] = checkFundusPlausibility(features);
+    if ~plausible
+        qc.fovMask = mask;
+        qc.features = features;
+        qc.featureScores = zeros(1, 5);
+        qc.featureNames = {'sharpness', 'exposure', 'contrast', 'fov', 'noise'};
+        qc.qualityScore = 0;
+        qc.decision = categorical({'Reject'}, {'Reject', 'Enhance', 'Pass'});
+        qc.classProbs = [1 0 0];
+        qc.isGradable = false;
+        qc.method = 'fundus_plausibility_gate';
+        qc.failReasons = {implausibleReason};
+        return
+    end
+
     sharpnessScore  = anchorScore(features.sharpness, 0.00005, 0.00030);
     contrastScore   = anchorScore(features.contrast, 0.02, 0.08);
     % Noise (MAD-based) has near-zero dynamic range on clean, well-lit

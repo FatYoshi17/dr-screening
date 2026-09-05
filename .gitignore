@@ -19,6 +19,11 @@ data/models/checkpoints_*/
 
 # Python venvs used for one-off export scripts (e.g. exportSegformerONNX.py)
 .venv*/
+__pycache__/
+*.pyc
+
+# Per-request scratch files from backend/main.py's API calls
+data/results_api/
 
 # MATLAB
 *.asv

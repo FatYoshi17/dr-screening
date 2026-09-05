@@ -145,8 +145,47 @@ function page2_images(reportPath, rgbImage, enhImg, trackAResult, trackBResult, 
     sgtitle(sprintf('Image Quality: %s', qualityLabel), 'FontSize', 13, 'FontWeight', 'bold', ...
         'Color', qualityColor(qc.decision));
 
+    drawColorLegend(fig);
+
     exportgraphics(fig, reportPath, 'Append', true);
     close(fig);
+end
+
+function drawColorLegend(fig)
+%DRAWCOLORLEGEND Color key for the AI-Interpreted Image panel.
+%   Must match buildLesionOverlay.m's colorMap exactly.
+    legendItems = {
+        [1 0 0],       'Vessel';
+        [1 1 1],       'Optic Disc';
+        [0 1 0],       'Fovea';
+        [1 1 0],       'Hard Exudates';
+        [0 1 1],       'Hemorrhages';
+        [0 0 1],       'Cotton Wool Spots';
+        [1 0.55 0],    'Vitreous Hemorrhage';
+        [1 0.27 0],    'IRMA';
+        [1 0 1],       'Neovascularization / confirmed MA (X)';
+    };
+    nCols = 3;
+    colWidth = 1 / nCols;
+    rowHeight = 0.025;
+    nRows = ceil(size(legendItems, 1) / nCols);
+    % Rows are drawn top-to-bottom starting at startY, so the LAST row must
+    % still land at a positive y - anchor startY to nRows instead of a fixed
+    % value, otherwise more legend entries silently push earlier rows
+    % outside annotation()'s required [0,1] position range (it errors, it
+    % does not clip).
+    startY = 0.02 + (nRows - 1) * rowHeight;
+    for i = 1:size(legendItems, 1)
+        col = mod(i - 1, nCols);
+        row = floor((i - 1) / nCols);
+        x = 0.03 + col * colWidth;
+        y = startY - row * rowHeight;
+        annotation(fig, 'rectangle', [x, y, 0.015, 0.018], ...
+            'FaceColor', legendItems{i, 1}, 'EdgeColor', [0.4 0.4 0.4]);
+        annotation(fig, 'textbox', [x + 0.02, y - 0.005, colWidth - 0.02, 0.03], ...
+            'String', legendItems{i, 2}, 'FontSize', 8, 'EdgeColor', 'none', ...
+            'VerticalAlignment', 'middle');
+    end
 end
 
 function page3_reasonsTable(reportPath, trackAResult, trackBResult, gradeResult, flag)

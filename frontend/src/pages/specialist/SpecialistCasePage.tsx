@@ -151,6 +151,7 @@ export const SpecialistCasePage: React.FC = () => {
                 alt={`Fundus examination of ${patient.name}`}
                 size="full"
                 eye={screening.eye}
+                isDemoSample={screening.isDemoSample}
                 allowZoom={true}
               />
             </div>

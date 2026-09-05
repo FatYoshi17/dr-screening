@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useScreeningStore } from '../../stores/screeningStore';
-import { screeningService } from '../../services/screeningService';
+import { screeningService, DEMO_KEYS } from '../../services/screeningService';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { StickyActionBar } from '../../components/ui/StickyActionBar';
@@ -27,17 +27,34 @@ export const QualityPage: React.FC = () => {
 
   const [evaluating, setEvaluating] = useState(true);
 
+  const isDemoSample = !!imageKey && DEMO_KEYS.includes(imageKey);
+
   useEffect(() => {
     const check = async () => {
       setEvaluating(true);
-      // Simulate fast on-device computer vision quality check (350ms)
-      await new Promise((res) => setTimeout(res, 350));
-      const res = await screeningService.evaluateImageQuality(imageKey || undefined);
+      // Demo scenarios: simulate a fast on-device check for consistent
+      // pacing. Real captures run the actual pipeline's quality gate below,
+      // which takes as long as it takes - no artificial delay.
+      if (isDemoSample) {
+        await new Promise((res) => setTimeout(res, 350));
+      }
+      const res = await screeningService.evaluateImageQuality(
+        imageKey || undefined,
+        isDemoSample ? undefined : imageUri || undefined,
+        patient
+          ? {
+              patientId: patient.id,
+              diabetesControl: patient.diabetesControl,
+              diabetesDurationYears: patient.diabetesDurationYears,
+              hba1c: patient.hba1c
+            }
+          : undefined
+      );
       setQualityResult(res.status, res.reason, res.tip);
       setEvaluating(false);
     };
     check();
-  }, [imageKey, setQualityResult]);
+  }, [imageKey, imageUri, isDemoSample, patient, setQualityResult]);
 
   const handleContinue = () => {
     navigate(`/screening/${id || patient?.id || 'new'}/upload`);
@@ -74,6 +91,7 @@ export const QualityPage: React.FC = () => {
               alt="Quality evaluation preview"
               size="preview"
               eye={eye}
+              isDemoSample={isDemoSample}
               allowZoom={true}
             />
           </div>
@@ -101,10 +119,12 @@ export const QualityPage: React.FC = () => {
               {qualityReason || t('quality.passDesc')}
             </p>
 
-            <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-medium text-left flex items-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-700 flex-shrink-0" />
-              <span>Optic disc, retinal arterioles, and foveal landmarks are distinct.</span>
-            </div>
+            {isDemoSample && (
+              <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-medium text-left flex items-center gap-2">
+                <Eye className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                <span>Optic disc, retinal arterioles, and foveal landmarks are distinct.</span>
+              </div>
+            )}
           </div>
         ) : (
           /* FAIL / RETAKE STATE */

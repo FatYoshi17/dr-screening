@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useScreeningStore } from '../../stores/screeningStore';
+import { DEMO_KEYS } from '../../services/screeningService';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { StickyActionBar } from '../../components/ui/StickyActionBar';
@@ -111,7 +112,7 @@ export const CapturePage: React.FC = () => {
           alt={`Retinal capture of ${patient?.name || 'patient'}`}
           size="preview"
           eye={eye}
-          isDemoSample={true}
+          isDemoSample={DEMO_KEYS.includes(currentImageKey)}
           className="mb-4"
         />
 

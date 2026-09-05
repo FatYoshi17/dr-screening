@@ -208,7 +208,7 @@ export const ReportPage: React.FC = () => {
             <div className="space-y-2">
               <div className="rounded-xl overflow-hidden border border-slate-300">
                 <FundusImage src={reportScreening.imageUri} alt="Report fundus image" size="preview"
-                  eye={reportScreening.eye} allowZoom={false} />
+                  eye={reportScreening.eye} isDemoSample={reportScreening.isDemoSample} allowZoom={false} />
               </div>
               <p className="text-[10px] text-slate-400 text-center">
                 {reportScreening.eye === 'RIGHT' ? t('report.rightEye') : t('report.leftEye')}
@@ -253,6 +253,28 @@ export const ReportPage: React.FC = () => {
                     <img src={reportScreening.segmentationImageUrl} alt="AI-interpreted segmentation overlay" className="w-full" />
                   </div>
                   <p className="text-[10px] text-slate-400 text-center">AI-Interpreted Image (lesion overlay)</p>
+                  {/* Color key - must match buildLesionOverlay.m's colorMap exactly */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-600 pt-1 border-t border-slate-100">
+                    {[
+                      { color: '#ff0000', label: 'Vessel' },
+                      { color: '#ffffff', label: 'Optic Disc', border: true },
+                      { color: '#00ff00', label: 'Fovea' },
+                      { color: '#ffff00', label: 'Hard Exudates' },
+                      { color: '#00ffff', label: 'Hemorrhages' },
+                      { color: '#0000ff', label: 'Cotton Wool Spots' },
+                      { color: '#ff8c00', label: 'Vitreous Hemorrhage' },
+                      { color: '#ff4500', label: 'IRMA' },
+                      { color: '#ff00ff', label: 'Neovascularization / confirmed Microaneurysm (X)' },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0 ${item.border ? 'border border-slate-300' : ''}`}
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {reportScreening.gradCamImageUrl && (

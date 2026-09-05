@@ -21,7 +21,7 @@ export const FundusImage: React.FC<FundusImageProps> = ({
   alt = 'Retinal fundus photography',
   size = 'preview',
   eye,
-  isDemoSample = true,
+  isDemoSample = false,
   className = '',
   allowZoom = true,
 }) => {

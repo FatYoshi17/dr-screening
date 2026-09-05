@@ -35,7 +35,8 @@ function run_pipeline_api(imagePath, patientInfoJsonPath, outputJsonPath)
         end
 
         result = run_end_to_end_pipeline(imagePath, cfg, patientInfo);
-        apiResult = buildApiResult(result, cfg);
+        outDir = fileparts(outputJsonPath);
+        apiResult = buildApiResult(result, cfg, outDir);
 
         fid = fopen(outputJsonPath, 'w');
         fprintf(fid, '%s', jsonencode(apiResult));
@@ -48,7 +49,7 @@ function run_pipeline_api(imagePath, patientInfoJsonPath, outputJsonPath)
     end
 end
 
-function apiResult = buildApiResult(result, cfg)
+function apiResult = buildApiResult(result, cfg, outDir)
     if strcmp(result.status, 'REJECTED')
         apiResult.status = 'REJECTED';
         apiResult.qualityStatus = 'FAIL';
@@ -65,6 +66,27 @@ function apiResult = buildApiResult(result, cfg)
     apiResult.qualityFeatures = buildQualityFeatures(result.qcBefore);
 
     apiResult.findings = buildFindings(result.trackA, result.trackB);
+
+    % AI-interpreted (segmentation overlay) and Grad-CAM images - saved
+    % as standalone files so the web frontend can display them directly
+    % (previously these only ever got embedded inside the PDF report,
+    % via generateAnnotatedReport.m's own copy of this same overlay
+    % logic - now shared via buildLesionOverlay.m). Resized + saved as
+    % JPEG rather than full-resolution PNG: IDRiD source images are
+    % ~4300x2800, which produced ~10MB PNGs - directly against this
+    % app's own "low-bandwidth rural" design goal (see UploadPage.tsx's
+    % client-side image compression, which this mirrors server-side).
+    displayWidth = 800;
+    segmentationImage = buildLesionOverlay(result.enhancedImage, result.trackA, result.trackB);
+    segmentationImage = imresize(segmentationImage, [NaN, displayWidth]);
+    segmentationFileName = 'segmentation.jpg';
+    imwrite(segmentationImage, fullfile(outDir, segmentationFileName), 'Quality', 80);
+    apiResult.segmentationImageFileName = segmentationFileName;
+
+    gradCamImage = imresize(result.cam.overlayImage, [NaN, displayWidth]);
+    gradCamFileName = 'gradcam.jpg';
+    imwrite(gradCamImage, fullfile(outDir, gradCamFileName), 'Quality', 80);
+    apiResult.gradCamImageFileName = gradCamFileName;
 
     grade = result.grade;
     apiResult.severity.icdrGrade = grade.shownGrade;

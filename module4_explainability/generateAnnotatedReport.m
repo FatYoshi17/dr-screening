@@ -288,32 +288,6 @@ function yPos = wrapText(x, yPos, str, fontSize, maxWidthFraction)
     end
 end
 
-function overlay = buildLesionOverlay(rgbImage, trackAResult, trackBResult)
-    overlay = im2uint8(rgbImage);
-    colorMap = struct('VH', [255 140 0], 'Fovea', [0 255 0], 'Vessel', [255 0 0], ...
-        'OD', [255 255 255], 'EX', [255 255 0], 'IRMA', [255 69 0], ...
-        'HE', [0 255 255], 'NV', [255 0 255], 'CWS', [0 0 255]);
-    classNames = fieldnames(colorMap);
-    for i = 1:numel(classNames)
-        fieldName = matlab.lang.makeValidName(classNames{i});
-        if isfield(trackAResult.masks, fieldName)
-            mask = trackAResult.masks.(fieldName);
-            color = colorMap.(classNames{i});
-            for c = 1:3
-                channel = overlay(:,:,c);
-                channel(mask) = color(c);
-                overlay(:,:,c) = channel;
-            end
-        end
-    end
-    for i = 1:numel(trackBResult.candidates)
-        if strcmp(trackBResult.candidates(i).status, 'confirmed')
-            overlay = insertMarker(overlay, trackBResult.candidates(i).centroid, ...
-                'x', 'Color', 'magenta', 'Size', 4);
-        end
-    end
-end
-
 function lesionList = summarizeLesions(trackAResult, trackBResult)
     lesionList = {};
     ignoredClasses = {'Background', 'Retina'};

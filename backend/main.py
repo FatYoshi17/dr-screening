@@ -122,6 +122,22 @@ async def get_report(request_id: str):
     return FileResponse(report_path, media_type="application/pdf", filename=report_file_name)
 
 
+@app.get("/api/image/{request_id}/{image_type}")
+async def get_image(request_id: str, image_type: str):
+    """Fetch the segmentation-overlay or Grad-CAM PNG for a previous /api/screen call.
+
+    image_type: 'segmentation' or 'gradcam'.
+    """
+    file_name_by_type = {"segmentation": "segmentation.jpg", "gradcam": "gradcam.jpg"}
+    if image_type not in file_name_by_type:
+        raise HTTPException(status_code=400, detail="image_type must be 'segmentation' or 'gradcam'")
+
+    image_path = RESULTS_DIR / request_id / file_name_by_type[image_type]
+    if not image_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found (unknown request id, or image was rejected at quality check)")
+    return FileResponse(image_path, media_type="image/jpeg")
+
+
 def _escape(s: str) -> str:
     """Escape single quotes for embedding into a MATLAB single-quoted string literal."""
     return s.replace("'", "''")

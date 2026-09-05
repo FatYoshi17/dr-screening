@@ -241,56 +241,29 @@ export const ReportPage: React.FC = () => {
           </ReportSection>
         )}
 
-        {/* Section 4 — Technical appendix: detailed quality feature
-            breakdown + model confidence/explainability, moved last per
-            the same clinical-first ordering request */}
-        {reportScreening.qualityFeatures && (
-          <ReportSection number="4a" title={`${t('report.imageQualityAssessment')} (Technical Detail)`}>
-            <div className="overflow-hidden rounded-xl border border-slate-300">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-800 text-white">
-                    <th className="text-left font-bold px-3 py-2">{t('report.feature')}</th>
-                    <th className="text-left font-bold px-3 py-2">{t('report.score')}</th>
-                    <th className="text-left font-bold px-3 py-2">{t('report.assessment')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportScreening.qualityFeatures.map((f, i) => (
-                    <tr key={f.name} className={i % 2 ? 'bg-slate-50' : 'bg-white'}>
-                      <td className="px-3 py-2 font-bold text-slate-900">{f.name}</td>
-                      <td className="px-3 py-2 text-slate-700">{f.score.toFixed(2)}</td>
-                      <td className={`px-3 py-2 font-semibold ${
-                        f.assessment === 'Good' ? 'text-emerald-700'
-                        : f.assessment === 'Acceptable' ? 'text-amber-700' : 'text-rose-700'
-                      }`}>{f.assessment === 'Good' ? t('report.qualityGood') : f.assessment === 'Acceptable' ? t('report.qualityAcceptable') : t('report.qualityPoor')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Section 4 — AI analysis visualizations: the actual
+            segmentation-overlay ("AI-interpreted") image and Grad-CAM
+            heatmap, real-pipeline-only (undefined for demo scenarios) */}
+        {(reportScreening.segmentationImageUrl || reportScreening.gradCamImageUrl) && (
+          <ReportSection number="4" title="AI Analysis Visualizations">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {reportScreening.segmentationImageUrl && (
+                <div className="space-y-1">
+                  <div className="rounded-xl overflow-hidden border border-slate-300">
+                    <img src={reportScreening.segmentationImageUrl} alt="AI-interpreted segmentation overlay" className="w-full" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center">AI-Interpreted Image (lesion overlay)</p>
+                </div>
+              )}
+              {reportScreening.gradCamImageUrl && (
+                <div className="space-y-1">
+                  <div className="rounded-xl overflow-hidden border border-slate-300">
+                    <img src={reportScreening.gradCamImageUrl} alt="Grad-CAM attention heatmap" className="w-full" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center">Grad-CAM Attention Heatmap</p>
+                </div>
+              )}
             </div>
-          </ReportSection>
-        )}
-
-        {reportScreening.explainability && (
-          <ReportSection number="4b" title={t('report.modelConfidenceExplainability')}>
-            <InfoGrid
-              fields={[
-                {
-                  label: t('report.calibratedConfidence'),
-                  value: reportScreening.explainability.reliabilityCategory,
-                  emphasis: reportScreening.explainability.reliabilityCategory === 'Reliable' ? 'success'
-                    : reportScreening.explainability.reliabilityCategory === 'Moderate' ? 'warning' : 'danger'
-                },
-                { label: t('report.lesionAttentionOverlap'), value: `${(reportScreening.explainability.lesionAttentionOverlap * 100).toFixed(0)}%` },
-                { label: t('report.reviewFlagStatus'), value: reportScreening.explainability.flagged ? t('report.flagged') : t('report.notFlagged'), emphasis: reportScreening.explainability.flagged ? 'warning' : 'success' },
-                { label: t('report.gradCamAttention'), value: reportScreening.explainability.flagged ? t('report.attachedFusion') : t('report.notShownDefault') },
-              ]}
-              columns={4}
-            />
-            <p className="text-[10px] text-slate-400 italic mt-1">
-              Technical detail: raw calibrated confidence {(reportScreening.explainability.calibratedConfidence * 100).toFixed(0)}%.
-            </p>
           </ReportSection>
         )}
 

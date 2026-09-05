@@ -110,6 +110,11 @@ export interface ScreeningRecord {
   findings?: LesionFinding[];
   severity?: SeverityAssessment;
   explainability?: Explainability;
+  // Real-pipeline-only (undefined for demo scenarios): the actual
+  // segmentation-overlay ("AI-interpreted image") and Grad-CAM heatmap
+  // PNGs generated for this screening, served by backend/main.py.
+  segmentationImageUrl?: string;
+  gradCamImageUrl?: string;
   // AI decision support details (visible to specialist only)
   aiDetails?: {
     modelVersion: string;

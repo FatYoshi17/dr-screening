@@ -64,6 +64,8 @@ export const screeningService = {
     findings?: LesionFinding[];
     severity?: SeverityAssessment;
     explainability?: Explainability;
+    segmentationImageUrl?: string;
+    gradCamImageUrl?: string;
   }> {
     // Real capture (not one of the bundled demo assets): call the
     // actual MATLAB pipeline instead of returning scripted demo data.
@@ -85,6 +87,8 @@ export const screeningService = {
         })),
         severity: result.severity,
         explainability: result.explainability,
+        segmentationImageUrl: result.requestId ? dxApiClient.segmentationImageUrl(result.requestId) : undefined,
+        gradCamImageUrl: result.requestId ? dxApiClient.gradCamImageUrl(result.requestId) : undefined,
         aiDetails: {
           modelVersion: 'DR-Screening-Pipeline-v1 (CBAM)',
           decisionSupportText: result.explainability?.flagReason

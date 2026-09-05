@@ -36,6 +36,8 @@ export interface DxApiResult {
   resultCategory: 'ROUTINE' | 'REVIEW' | 'PRIORITY' | 'RETAKE';
   resultRecommendation: string;
   reportFileName?: string;
+  segmentationImageFileName?: string;
+  gradCamImageFileName?: string;
 }
 
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
@@ -65,5 +67,13 @@ export const dxApiClient = {
 
   reportUrl(requestId: string): string {
     return `${API_BASE}/api/report/${requestId}`;
+  },
+
+  segmentationImageUrl(requestId: string): string {
+    return `${API_BASE}/api/image/${requestId}/segmentation`;
+  },
+
+  gradCamImageUrl(requestId: string): string {
+    return `${API_BASE}/api/image/${requestId}/gradcam`;
   }
 };

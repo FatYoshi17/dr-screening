@@ -81,7 +81,9 @@ export const UploadPage: React.FC = () => {
             qualityFeatures: ai.qualityFeatures,
             findings: ai.findings,
             severity: ai.severity,
-            explainability: ai.explainability
+            explainability: ai.explainability,
+            segmentationImageUrl: ai.segmentationImageUrl,
+            gradCamImageUrl: ai.gradCamImageUrl
           });
 
           await patientService.updatePatientLastScreening(patient.id, ai.resultCategory);
@@ -111,7 +113,9 @@ export const UploadPage: React.FC = () => {
           qualityFeatures: ai.qualityFeatures,
           findings: ai.findings,
           severity: ai.severity,
-          explainability: ai.explainability
+          explainability: ai.explainability,
+          segmentationImageUrl: ai.segmentationImageUrl,
+          gradCamImageUrl: ai.gradCamImageUrl
         });
 
         // Add to pending queue

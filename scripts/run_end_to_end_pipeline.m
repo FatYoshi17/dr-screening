@@ -1,11 +1,17 @@
-function pipelineResult = run_end_to_end_pipeline(imagePath, cfg)
+function pipelineResult = run_end_to_end_pipeline(imagePath, cfg, patientInfo)
 %RUN_END_TO_END_PIPELINE Module 1 -> 2 -> 3 -> 4, one image, full pipeline.
 %   pipelineResult = run_end_to_end_pipeline(imagePath) runs:
 %     1. Module 1: assess quality, enhance if needed, reject if ungradeable
 %     2. Module 2: Track A (structures) + Track B (microaneurysms)
 %     3. Module 3: grade + disagreement flag
 %     4. Module 4: Grad-CAM, calibrated confidence, lesion-attention
-%        overlap, annotated report
+%        overlap, multi-page annotated report
+%
+%   pipelineResult = run_end_to_end_pipeline(imagePath, cfg, patientInfo)
+%   attaches patient context to the report's first page - see
+%   generateAnnotatedReport.m for patientInfo's fields (diabetesControl,
+%   diabetesDurationYears, hba1c, patientId). All optional; omit for
+%   "Unknown" in the report.
 %
 %   ALL FOUR MODULES NEED THEIR MODELS TRAINED FIRST - see
 %   docs/RUN_GUIDE.md and train_all_models.m. This function will error
@@ -16,8 +22,11 @@ function pipelineResult = run_end_to_end_pipeline(imagePath, cfg)
 %
 %   See also: train_all_models, app_try_it.
 
-    if nargin < 2
+    if nargin < 2 || isempty(cfg)
         cfg = config();
+    end
+    if nargin < 3 || isempty(patientInfo)
+        patientInfo = struct();
     end
 
     [~, imageId, ~] = fileparts(imagePath);
@@ -62,12 +71,9 @@ function pipelineResult = run_end_to_end_pipeline(imagePath, cfg)
     overlapResult = lesionAttentionOverlap(camResult, trackAResult, trackBResult);
     fprintf('  Lesion-attention overlap: %.0f%%\n', overlapResult.overlapScore * 100);
 
-    reportFig = generateAnnotatedReport(enhImg, trackAResult, trackBResult, ...
-        gradeResult, camResult, overlapResult, imageId);
-
     reportPath = fullfile(cfg.resultsDir, sprintf('report_%s.pdf', imageId));
-    exportgraphics(reportFig, reportPath);
-    close(reportFig);
+    generateAnnotatedReport(rgbImage, enhImg, qcBefore, trackAResult, trackBResult, ...
+        gradeResult, camResult, overlapResult, patientInfo, imageId, reportPath);
     fprintf('Saved report to %s\n', reportPath);
 
     pipelineResult.status = 'GRADED';

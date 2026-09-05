@@ -1,8 +1,16 @@
 import { db } from '../offline/db';
-import type { ScreeningRecord, ScreeningResultCategory, QualityStatus } from '../types';
+import type {
+  ScreeningRecord,
+  ScreeningResultCategory,
+  QualityStatus,
+  QualityFeature,
+  LesionFinding,
+  SeverityAssessment,
+  Explainability
+} from '../types';
 import { dxApiClient, type PatientContext } from './dxApiClient';
 
-const DEMO_KEYS = ['fundus-good', 'fundus-poor-blur', 'fundus-poor-dark', 'fundus-priority', 'fundus-review'];
+export const DEMO_KEYS = ['fundus-good', 'fundus-poor-blur', 'fundus-poor-dark', 'fundus-priority', 'fundus-review'];
 
 export const screeningService = {
   async evaluateImageQuality(imageKey?: string): Promise<{
@@ -49,6 +57,13 @@ export const screeningService = {
     recommendation: string;
     aiDetails?: ScreeningRecord['aiDetails'];
     requestId?: string;
+    // Real-pipeline-only fields (undefined for demo scenarios): the
+    // actual data ReportPage.tsx needs to render a real report instead
+    // of falling back to its own hardcoded demo findings/severity.
+    qualityFeatures?: QualityFeature[];
+    findings?: LesionFinding[];
+    severity?: SeverityAssessment;
+    explainability?: Explainability;
   }> {
     // Real capture (not one of the bundled demo assets): call the
     // actual MATLAB pipeline instead of returning scripted demo data.
@@ -62,6 +77,14 @@ export const screeningService = {
         resultCategory: result.resultCategory,
         recommendation: result.resultRecommendation,
         requestId: result.requestId,
+        qualityFeatures: result.qualityFeatures,
+        findings: result.findings?.map((f) => ({
+          lesionType: f.lesionType,
+          count: f.count,
+          confidence: f.confidence
+        })),
+        severity: result.severity,
+        explainability: result.explainability,
         aiDetails: {
           modelVersion: 'DR-Screening-Pipeline-v1 (CBAM)',
           decisionSupportText: result.explainability?.flagReason

@@ -61,6 +61,7 @@ const getDemoReportData = (screening: ScreeningRecord): ScreeningRecord => {
     },
     explainability: screening.explainability || {
       calibratedConfidence: isPriority ? 0.91 : isReview ? 0.82 : isRetake ? 0.68 : 0.95,
+      reliabilityCategory: isPriority ? 'Reliable' : isReview ? 'Moderate' : isRetake ? 'Low' : 'Reliable',
       lesionAttentionOverlap: isPriority ? 0.88 : isReview ? 0.74 : isRetake ? 0.41 : 0.92,
       flagged: isPriority || isRetake,
       flagReason: isPriority ? 'High-risk lesion pattern requires specialist confirmation.' : isRetake ? 'Image quality limits reliable lesion localization.' : undefined,
@@ -158,19 +159,93 @@ export const ReportPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Patient demographics */}
+        {/* Patient demographics - diabetes control/duration/HbA1c requested
+            directly by a reviewing ophthalmologist for clinical context
+            alongside the grade itself */}
         <InfoGrid
           fields={[
             { label: t('report.patientName'), value: patient.name },
             { label: t('report.patientId'), value: patient.id },
             { label: t('report.ageSex'), value: `${patient.age} yrs / ${patient.sex}` },
             { label: t('report.village'), value: patient.village },
+            { label: 'Diabetes Control', value: patient.diabetesControl || 'Unknown' },
+            { label: 'Duration of Diabetes', value: patient.diabetesDurationYears != null ? `${patient.diabetesDurationYears} years` : 'Unknown' },
+            { label: 'HbA1c', value: patient.hba1c != null ? `${patient.hba1c}%` : 'Unknown' },
           ]}
         />
 
-        {/* Section 1 — Image Quality */}
+        {/* Section 1 — Recommendation, moved first: this is the actual
+            clinical decision, not the technical detail underneath it -
+            a reviewing ophthalmologist specifically asked for
+            clinically-relevant material up front and confidence
+            intervals/technical detail pushed later, not the reverse */}
+        <ReportSection number="1" title={t('report.recommendation')}>
+          <StatusBadge status={reportScreening.resultCategory} size="lg" />
+          <div className={`p-3.5 rounded-xl border ${tone.bg} ${tone.border} mt-2`}>
+            <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+              {t('report.recommendedPlan')}
+            </span>
+            <p className={`text-sm font-semibold leading-relaxed ${tone.text}`}>
+              {reportScreening.resultRecommendation}
+            </p>
+          </div>
+          <div className="text-xs text-slate-600 space-y-1 bg-teal-50/60 p-3 rounded-xl border border-teal-200 mt-2">
+            <div className="font-bold text-brand-900 flex items-center gap-1.5">
+              {tone.icon}
+              <span>{t('report.protocolVerified')}</span>
+            </div>
+            <p className="text-[11px] text-slate-700">
+              {t('report.protocolDescription')}
+            </p>
+          </div>
+        </ReportSection>
+
+        {/* Section 2 — Retinal findings: original + AI-interpreted image
+            together, quality status shown alongside (detailed
+            per-feature breakdown moved to the technical section below) */}
+        <ReportSection number="2" title={t('report.retinalFindings')}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+            <div className="space-y-2">
+              <div className="rounded-xl overflow-hidden border border-slate-300">
+                <FundusImage src={reportScreening.imageUri} alt="Report fundus image" size="preview"
+                  eye={reportScreening.eye} allowZoom={false} />
+              </div>
+              <p className="text-[10px] text-slate-400 text-center">
+                {reportScreening.eye === 'RIGHT' ? t('report.rightEye') : t('report.leftEye')}
+              </p>
+              <div className="inline-block px-3 py-1 rounded-lg border-2 font-bold text-[11px] mx-auto block text-center"
+                style={{
+                  borderColor: reportScreening.qualityStatus === 'PASS' ? '#059669' : '#dc2626',
+                  color: reportScreening.qualityStatus === 'PASS' ? '#059669' : '#dc2626',
+                  background: reportScreening.qualityStatus === 'PASS' ? '#ecfdf5' : '#fef2f2',
+                }}>
+                {t('report.overallQuality')}: {reportScreening.qualityStatus === 'PASS' ? t('report.qualityPass') : t('report.qualityReject')}
+              </div>
+            </div>
+            {reportScreening.findings && <FindingsTable findings={reportScreening.findings} />}
+          </div>
+        </ReportSection>
+
+        {/* Section 3 — Severity / grading reasons */}
+        {reportScreening.severity && (
+          <ReportSection number="3" title={t('report.drSeverityAssessment')}>
+            <InfoGrid
+              fields={[
+                { label: t('report.icdrSeverityGrade'), value: `Grade ${reportScreening.severity.icdrGrade} - ${reportScreening.severity.gradeLabel}` },
+                { label: t('report.referableDr'), value: reportScreening.severity.referable ? 'YES' : 'NO', emphasis: reportScreening.severity.referable ? 'danger' : 'success' },
+                { label: t('report.gradingPathway'), value: reportScreening.severity.gradingPathway === 'cnn' ? t('report.cnn') : t('report.ruleBased') },
+                { label: t('report.ruleCnnAgreement'), value: reportScreening.severity.agreement ? t('report.agree') : t('report.disagreementFlagged'), emphasis: reportScreening.severity.agreement ? 'success' : 'warning' },
+              ]}
+              columns={4}
+            />
+          </ReportSection>
+        )}
+
+        {/* Section 4 — Technical appendix: detailed quality feature
+            breakdown + model confidence/explainability, moved last per
+            the same clinical-first ordering request */}
         {reportScreening.qualityFeatures && (
-          <ReportSection number="1" title={t('report.imageQualityAssessment')}>
+          <ReportSection number="4a" title={`${t('report.imageQualityAssessment')} (Technical Detail)`}>
             <div className="overflow-hidden rounded-xl border border-slate-300">
               <table className="w-full text-xs">
                 <thead>
@@ -194,84 +269,30 @@ export const ReportPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <div className="inline-block px-4 py-1.5 rounded-lg border-2 font-bold text-xs"
-              style={{
-                borderColor: reportScreening.qualityStatus === 'PASS' ? '#059669' : '#dc2626',
-                color: reportScreening.qualityStatus === 'PASS' ? '#059669' : '#dc2626',
-                background: reportScreening.qualityStatus === 'PASS' ? '#ecfdf5' : '#fef2f2',
-              }}>
-              {t('report.overallQuality')}: {reportScreening.qualityStatus === 'PASS' ? t('report.qualityPass') : t('report.qualityReject')}
-            </div>
           </ReportSection>
         )}
 
-        {/* Section 2 — Retinal findings */}
-        <ReportSection number="2" title={t('report.retinalFindings')}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-            <div className="space-y-2">
-              <div className="rounded-xl overflow-hidden border border-slate-300">
-                <FundusImage src={reportScreening.imageUri} alt="Report fundus image" size="preview"
-                  eye={reportScreening.eye} allowZoom={false} />
-              </div>
-              <p className="text-[10px] text-slate-400 text-center">
-                {reportScreening.eye === 'RIGHT' ? t('report.rightEye') : t('report.leftEye')}
-              </p>
-            </div>
-            {reportScreening.findings && <FindingsTable findings={reportScreening.findings} />}
-          </div>
-        </ReportSection>
-
-        {/* Section 3 — Severity */}
-        {reportScreening.severity && (
-          <ReportSection number="3" title={t('report.drSeverityAssessment')}>
-            <InfoGrid
-              fields={[
-                { label: t('report.icdrSeverityGrade'), value: `Grade ${reportScreening.severity.icdrGrade} - ${reportScreening.severity.gradeLabel}` },
-                { label: t('report.referableDr'), value: reportScreening.severity.referable ? 'YES' : 'NO', emphasis: reportScreening.severity.referable ? 'danger' : 'success' },
-                { label: t('report.gradingPathway'), value: reportScreening.severity.gradingPathway === 'cnn' ? t('report.cnn') : t('report.ruleBased') },
-                { label: t('report.ruleCnnAgreement'), value: reportScreening.severity.agreement ? t('report.agree') : t('report.disagreementFlagged'), emphasis: reportScreening.severity.agreement ? 'success' : 'warning' },
-              ]}
-              columns={4}
-            />
-          </ReportSection>
-        )}
-
-        {/* Section 4 — Explainability */}
         {reportScreening.explainability && (
-          <ReportSection number="4" title={t('report.modelConfidenceExplainability')}>
+          <ReportSection number="4b" title={t('report.modelConfidenceExplainability')}>
             <InfoGrid
               fields={[
-                { label: t('report.calibratedConfidence'), value: `${(reportScreening.explainability.calibratedConfidence * 100).toFixed(0)}%` },
-                { label: t('report.lesionAttentionOverlap'), value: reportScreening.explainability.lesionAttentionOverlap.toFixed(2) },
+                {
+                  label: t('report.calibratedConfidence'),
+                  value: reportScreening.explainability.reliabilityCategory,
+                  emphasis: reportScreening.explainability.reliabilityCategory === 'Reliable' ? 'success'
+                    : reportScreening.explainability.reliabilityCategory === 'Moderate' ? 'warning' : 'danger'
+                },
+                { label: t('report.lesionAttentionOverlap'), value: `${(reportScreening.explainability.lesionAttentionOverlap * 100).toFixed(0)}%` },
                 { label: t('report.reviewFlagStatus'), value: reportScreening.explainability.flagged ? t('report.flagged') : t('report.notFlagged'), emphasis: reportScreening.explainability.flagged ? 'warning' : 'success' },
                 { label: t('report.gradCamAttention'), value: reportScreening.explainability.flagged ? t('report.attachedFusion') : t('report.notShownDefault') },
               ]}
               columns={4}
             />
+            <p className="text-[10px] text-slate-400 italic mt-1">
+              Technical detail: raw calibrated confidence {(reportScreening.explainability.calibratedConfidence * 100).toFixed(0)}%.
+            </p>
           </ReportSection>
         )}
-
-        {/* Section 5 — Recommendation */}
-        <ReportSection number="5" title={t('report.recommendation')}>
-          <StatusBadge status={reportScreening.resultCategory} size="lg" />
-          <div className={`p-3.5 rounded-xl border ${tone.bg} ${tone.border} mt-2`}>
-            <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-              {t('report.recommendedPlan')}
-            </span>
-            <p className={`text-sm font-semibold leading-relaxed ${tone.text}`}>
-              {reportScreening.resultRecommendation}
-            </p>
-          </div>
-          <div className="text-xs text-slate-600 space-y-1 bg-teal-50/60 p-3 rounded-xl border border-teal-200 mt-2">
-            <div className="font-bold text-brand-900 flex items-center gap-1.5">
-              {tone.icon}
-              <span>{t('report.protocolVerified')}</span>
-            </div>
-            <p className="text-[11px] text-slate-700">
-              {t('report.protocolDescription')}
-            </p>
-          </div>
-        </ReportSection>
 
         {/* Disclaimer */}
         <p className="text-[10px] text-slate-400 italic pt-4 border-t border-slate-200 leading-relaxed">

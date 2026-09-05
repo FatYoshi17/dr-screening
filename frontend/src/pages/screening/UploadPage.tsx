@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useScreeningStore } from '../../stores/screeningStore';
 import { useConnectivityStore } from '../../stores/connectivityStore';
-import { screeningService } from '../../services/screeningService';
+import { screeningService, DEMO_KEYS as DEMO_ASSET_KEYS } from '../../services/screeningService';
 import { uploadService } from '../../services/uploadService';
 import { patientService } from '../../services/patientService';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -76,8 +76,12 @@ export const UploadPage: React.FC = () => {
             synced: true,
             centreName: 'Rampur Primary Health Centre',
             healthWorkerName: 'Suman ASHA',
-            isDemoSample: true,
-            aiDetails: ai.aiDetails
+            isDemoSample: !imageKey || DEMO_ASSET_KEYS.includes(imageKey),
+            aiDetails: ai.aiDetails,
+            qualityFeatures: ai.qualityFeatures,
+            findings: ai.findings,
+            severity: ai.severity,
+            explainability: ai.explainability
           });
 
           await patientService.updatePatientLastScreening(patient.id, ai.resultCategory);
@@ -102,8 +106,12 @@ export const UploadPage: React.FC = () => {
           synced: false,
           centreName: 'Rampur Primary Health Centre',
           healthWorkerName: 'Suman ASHA',
-          isDemoSample: true,
-          aiDetails: ai.aiDetails
+          isDemoSample: !imageKey || DEMO_ASSET_KEYS.includes(imageKey),
+          aiDetails: ai.aiDetails,
+          qualityFeatures: ai.qualityFeatures,
+          findings: ai.findings,
+          severity: ai.severity,
+          explainability: ai.explainability
         });
 
         // Add to pending queue

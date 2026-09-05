@@ -75,8 +75,15 @@ export interface SeverityAssessment {
   agreement: boolean;
 }
 
+export type ReliabilityCategory = 'Reliable' | 'Moderate' | 'Low';
+
 export interface Explainability {
   calibratedConfidence: number;
+  // A reviewing ophthalmologist asked for this directly: a bare "82%
+  // reliable" invites over-interpretation of a number that's only
+  // roughly calibrated. Prefer this category in clinician-facing UI;
+  // calibratedConfidence is still available for the technical appendix.
+  reliabilityCategory: ReliabilityCategory;
   lesionAttentionOverlap: number;
   flagged: boolean;
   flagReason?: string;

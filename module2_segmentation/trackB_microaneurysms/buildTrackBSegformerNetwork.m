@@ -42,7 +42,24 @@ function net = buildTrackBSegformerNetwork(rawMatPath, patchSize, outputNetPath)
     loaded = load(rawMatPath);
     net = loaded.net;
 
-    inputLayer = imageInputLayer([patchSize patchSize 3], 'Normalization', 'none', ...
+    % HuggingFace's SegformerImageProcessor (what the pretrained encoder
+    % was actually trained against) rescales pixels to [0,1] then
+    % normalizes per RGB channel with ImageNet mean/std
+    % (0.485/0.456/0.406, 0.229/0.224/0.225) before the encoder ever
+    % sees an image. 'Normalization','none' was skipping all of that -
+    % raw 0-255 pixel values were going straight into a pretrained
+    % encoder that has never seen inputs on that scale, which plausibly
+    % explains why neither LR=1e-4 nor LR=1e-3 fine-tuning ever produced
+    % meaningful MA-class discrimination (see trainTrackB.m's history).
+    % Mean/StandardDeviation given explicitly (in the 0-255 scale, i.e.
+    % ImageNet's [0,1]-scale constants x255) so imageInputLayer applies
+    % a fixed per-channel normalization without needing to scan the
+    % training data - avoids the OOM crash 'zscore' with auto-computed
+    % stats caused elsewhere in this codebase (see buildTrackBNetwork.m).
+    imagenetMean255 = reshape([123.675, 116.28, 103.53], 1, 1, 3);
+    imagenetStd255 = reshape([58.395, 57.12, 57.375], 1, 1, 3);
+    inputLayer = imageInputLayer([patchSize patchSize 3], 'Normalization', 'zscore', ...
+        'Mean', imagenetMean255, 'StandardDeviation', imagenetStd255, ...
         'Name', 'segformer_input');
     net = addInputLayer(net, inputLayer, 'Initialize', true);
 

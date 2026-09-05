@@ -35,6 +35,14 @@ function cfg = config()
     cfg.module1QualityModel           = fullfile(cfg.dataModels, 'module1_quality_model.mat');
     cfg.trackANetPath                 = fullfile(cfg.dataModels, 'trackA_net.mat');
     cfg.trackBSegformerNetPath        = fullfile(cfg.dataModels, 'trackB_segformer_net.mat');
+    cfg.trackBCbamNetPath             = fullfile(cfg.dataModels, 'trackB_cbam_net.mat');
+    % Which Track B model the pipeline actually uses - CBAM is the
+    % working, evaluated model as of now (mean Dice 0.36 on held-out
+    % IDRiD test patches); SegFormer is a promising but still-being-
+    % tuned alternative (see trainTrackB.m's history). Flip this to
+    % cfg.trackBSegformerNetPath once SegFormer's fully evaluated and
+    % preferred.
+    cfg.trackBActiveNetPath           = cfg.trackBCbamNetPath;
     cfg.trackBSegformerOnnxPath       = fullfile(cfg.dataModels, 'segformer_ma.onnx');
     cfg.module3GradingCnnPath         = fullfile(cfg.dataModels, 'module3_grading_cnn.mat');
     cfg.module4ConfidenceCalibPath    = fullfile(cfg.dataModels, 'module4_confidence_calibration.mat');

@@ -66,6 +66,21 @@ function result = detectMicroaneurysmsV2(rgbImage, netPath)
 
     candidates = objectWiseConfidence(probMap, 2);
 
+    % objectWiseConfidence's empty-case struct only defines its own 6
+    % fields (centroid, pixelIdxList, area, meanProb, maxProb,
+    % confidence) - shapeConfidence/combinedConfidence/status only get
+    % attached to the struct's type by the loop below actually running
+    % at least once. With zero candidates found, that never happens, so
+    % downstream code touching candidates.status on a genuinely-empty
+    % result errors with "Unrecognized field name" instead of just
+    % seeing an empty array. Predefine them here so the fields always
+    % exist regardless of candidate count.
+    if isempty(candidates)
+        candidates = struct('centroid', {}, 'pixelIdxList', {}, 'area', {}, ...
+            'meanProb', {}, 'maxProb', {}, 'confidence', {}, ...
+            'shapeConfidence', {}, 'combinedConfidence', {}, 'status', {});
+    end
+
     confirmedCount = 0;
     hasAmbiguous = false;
     for i = 1:numel(candidates)

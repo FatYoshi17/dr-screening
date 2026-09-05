@@ -24,7 +24,7 @@ function pipelineResult = run_end_to_end_pipeline(imagePath, cfg)
     rgbImage = imread(imagePath);
 
     fprintf('=== Module 1: Image Quality ===\n');
-    [enhImg, qcBefore, qcAfter] = enhanceImage(rgbImage);
+    [enhImg, qcBefore, qcAfter] = enhanceImage(rgbImage, cfg.module1QualityModel);
     fprintf('  Decision: %s (score %.2f)\n', string(qcBefore.decision), qcBefore.qualityScore);
 
     if ~qcBefore.isGradable
@@ -36,20 +36,20 @@ function pipelineResult = run_end_to_end_pipeline(imagePath, cfg)
 
     fprintf('=== Module 2: Structure Segmentation ===\n');
     fprintf('  Track A (structures)...\n');
-    trackAResult = segmentStructures(enhImg);
+    trackAResult = segmentStructures(enhImg, cfg.trackANetPath);
     fprintf('  Track B (microaneurysms)...\n');
-    trackBResult = detectMicroaneurysmsV2(enhImg);
+    trackBResult = detectMicroaneurysmsV2(enhImg, cfg.trackBActiveNetPath);
     fprintf('  Track B: %d confirmed MA, ambiguous=%d\n', ...
         trackBResult.confirmedCount, trackBResult.hasAmbiguous);
 
     fprintf('=== Module 3: Severity Grading ===\n');
-    gradeResult = gradeImage(enhImg, trackAResult, trackBResult);
+    gradeResult = gradeImage(enhImg, trackAResult, trackBResult, cfg.module3GradingCnnPath);
     fprintf('  Shown grade: %d (referable=%d), flagged=%d (%s)\n', ...
         gradeResult.shownGrade, gradeResult.isReferable, ...
         gradeResult.flag.flagged, gradeResult.flag.priority);
 
     fprintf('=== Module 4: Explainability ===\n');
-    camResult = computeGradCAM(enhImg);
+    camResult = computeGradCAM(enhImg, cfg.module3GradingCnnPath);
     overlapResult = lesionAttentionOverlap(camResult, trackAResult, trackBResult);
     fprintf('  Lesion-attention overlap: %.0f%%\n', overlapResult.overlapScore * 100);
 

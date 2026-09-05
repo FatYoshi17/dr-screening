@@ -31,13 +31,20 @@ function camResult = computeGradCAM(rgbImage, gradingModelPath, targetGrade)
 
     imgResized = imresize(im2uint8(rgbImage), model.inputSize(1:2));
 
-    % 'ReductionLayer'/'FeatureLayer' left to gradCAM's auto-detection
-    % for a resnet50-based graph; MapReduce over the regression output
-    % neuron ('fc_grade_out') gives per-pixel importance for the
-    % continuous severity score rather than for a specific class.
+    % gradCAM's actual name-value parameter is 'ReductionLayer', not
+    % 'OutputLayer' (which isn't a recognized parameter at all - this
+    % errored immediately when first exercised end-to-end). It also has
+    % to be a non-output layer - 'grading_huber_output' (the network's
+    % actual output/loss layer) errors; 'fc_grade_out', the fully
+    % connected layer producing the raw regression score just before
+    % it, is what's actually wanted here. Likewise 'gem_pool' (GeM
+    % pooling, by definition) has already collapsed the spatial
+    % dimensions gradCAM needs to build a heatmap over - use
+    % 'activation_49_relu', the last resnet50 layer before that pooling
+    % that still has real spatial resolution.
     scoreMap = gradCAM(model.net, imgResized, 1, ...
-        'OutputLayer', 'grading_huber_output', ...
-        'FeatureLayer', 'gem_pool');
+        'ReductionLayer', 'fc_grade_out', ...
+        'FeatureLayer', 'activation_49_relu');
 
     heatmap = imresize(scoreMap, [size(rgbImage,1), size(rgbImage,2)]);
     heatmap = rescale(heatmap); % normalize to [0,1] for display/thresholding

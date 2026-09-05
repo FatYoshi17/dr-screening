@@ -21,7 +21,11 @@ function result = segmentStructures(rgbImage, netPath)
 
     imgResized = imresize(im2uint8(rgbImage), loaded.imageSize(1:2));
 
-    [labelMap, probMaps] = semanticseg(imgResized, loaded.net, 'OutputType', 'both');
+    % semanticseg's 'OutputType' only accepts 'categorical'/'double'/
+    % 'uint8' (not 'both', despite what an earlier version of this file
+    % assumed) - the 3-output form gives the categorical label map and
+    % the full per-class score array together without needing it.
+    [labelMap, ~, probMaps] = semanticseg(imgResized, loaded.net);
 
     result.labelMap = labelMap;
     result.probMaps = probMaps;

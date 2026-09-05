@@ -1,4 +1,4 @@
-function results = evaluateTrackBCheckpoint(checkpointPath, numTestPatches)
+function results = evaluateTrackBCheckpoint(checkpointPath, numTestPatches, scoreThreshold)
 %EVALUATETRACKBCHECKPOINT Sanity-check a Track B checkpoint on held-out IDRiD test images.
 %   results = evaluateTrackBCheckpoint(checkpointPath) loads a saved
 %   trainNetwork checkpoint (a DAGNetwork), runs it on positive
@@ -14,10 +14,28 @@ function results = evaluateTrackBCheckpoint(checkpointPath, numTestPatches)
 %   scores ~99% accuracy while being useless. Dice on the MA class is
 %   the metric that actually reflects whether it found anything.
 %
+%   results = evaluateTrackBCheckpoint(checkpointPath, numTestPatches, scoreThreshold)
+%   uses a custom threshold directly on the raw Microaneurysm-class
+%   score instead of semanticseg's default argmax-between-classes rule.
+%   This matters a lot for severely imbalanced models: SegFormer's
+%   first several training attempts scored 0.000 Dice under the default
+%   rule despite genuinely learning to rank MA pixels above background
+%   (confirmed by checking raw scores directly) - the imbalance drags
+%   both classes' absolute confidence toward "background" so far that
+%   the MA channel's score never actually exceeds the background
+%   channel's, even at true lesion locations. A threshold in the
+%   ~0.1-0.2 range (tune per checkpoint - it varies) recovers real,
+%   substantial Dice from the same underlying model. Leave empty/omit
+%   to use the default argmax rule (fine for well-calibrated models
+%   like the CBAM CNN, which doesn't show this problem).
+%
 %   See also: trainTrackB, buildTrackBSegformerNetwork.
 
     if nargin < 2 || isempty(numTestPatches)
         numTestPatches = 20;
+    end
+    if nargin < 3
+        scoreThreshold = [];
     end
 
     cfg = config();
@@ -72,8 +90,13 @@ function results = evaluateTrackBCheckpoint(checkpointPath, numTestPatches)
             imgPatch = img(r:r+patchSize-1, c:c+patchSize-1, :);
             gtPatch = maMask(r:r+patchSize-1, c:c+patchSize-1);
 
-            predLabels = semanticseg(imgPatch, net);
-            predMask = predLabels == 'Microaneurysm';
+            if isempty(scoreThreshold)
+                predLabels = semanticseg(imgPatch, net);
+                predMask = predLabels == 'Microaneurysm';
+            else
+                [~, ~, allScores] = semanticseg(imgPatch, net);
+                predMask = allScores(:,:,2) > scoreThreshold;
+            end
 
             intersection = nnz(predMask & gtPatch);
             diceScore = 2 * intersection / (nnz(predMask) + nnz(gtPatch) + eps);

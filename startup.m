@@ -3,7 +3,8 @@ function startup()
 %MATLAB path. Run once per session.
     root = fileparts(mfilename('fullpath'));
     moduleDirs = {'module1_quality', 'module2_segmentation', ...
-        'module3_grading', 'module4_explainability', 'common'};
+        'module3_grading', 'module4_explainability', ...
+        'module5_capacity_planning', 'common'};
     for i = 1:numel(moduleDirs)
         addpath(genpath(fullfile(root, moduleDirs{i})));
     end

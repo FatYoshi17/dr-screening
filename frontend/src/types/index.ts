@@ -64,7 +64,11 @@ export interface LesionFinding {
   lesionType: string;
   count: number;
   location?: string;
+  // The pipeline's own detection-size confidence proxy, not a
+  // calibrated probability - kept for the technical appendix.
+  // reliabilityCategory (below) is what clinician-facing UI should show.
   confidence: number;
+  reliabilityCategory?: ReliabilityCategory;
 }
 
 export interface SeverityAssessment {

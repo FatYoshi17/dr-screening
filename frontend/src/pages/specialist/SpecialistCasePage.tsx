@@ -191,10 +191,16 @@ export const SpecialistCasePage: React.FC = () => {
                     <span className="text-slate-500 block text-[11px]">Model Architecture</span>
                     <span className="font-bold">{screening.aiDetails.modelVersion}</span>
                   </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Decision Confidence</span>
-                    <span className="font-bold text-indigo-900">{screening.aiDetails.confidenceIndicator}</span>
-                  </div>
+                  {/* Confidence is only meaningful when the rule and CNN
+                      pathways agree - a flagged/disagreeing case has two
+                      conflicting raw opinions instead, not one blended
+                      number to show (see disagreementFlag.m's showConfidence). */}
+                  {!screening.explainability?.flagged && (
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">Decision Confidence</span>
+                      <span className="font-bold text-indigo-900">{screening.aiDetails.confidenceIndicator}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>

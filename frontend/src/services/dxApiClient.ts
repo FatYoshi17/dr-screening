@@ -18,7 +18,13 @@ export interface DxApiResult {
   qualityStatus: 'PASS' | 'FAIL';
   qualityReason?: string;
   qualityFeatures?: Array<{ name: string; score: number; assessment: 'Good' | 'Acceptable' | 'Poor' }>;
-  findings?: Array<{ lesionType: string; count: number; confidence: number }>;
+  findings?: Array<{
+    lesionType: string;
+    count: number;
+    confidence: number;
+    location?: string;
+    reliabilityCategory?: 'Reliable' | 'Moderate' | 'Low';
+  }>;
   severity?: {
     icdrGrade: number;
     gradeLabel: string;

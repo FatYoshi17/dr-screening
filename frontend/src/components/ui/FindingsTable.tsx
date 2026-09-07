@@ -6,9 +6,9 @@ interface FindingsTableProps {
   findings: LesionFinding[];
 }
 
-const confidenceClass = (confidence: number) => {
-  if (confidence >= 0.85) return 'text-emerald-700';
-  if (confidence >= 0.7) return 'text-amber-700';
+const reliabilityClass = (category?: string) => {
+  if (category === 'Reliable') return 'text-emerald-700';
+  if (category === 'Moderate') return 'text-amber-700';
   return 'text-rose-700';
 };
 
@@ -31,8 +31,8 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({ findings }) => {
             <td className="px-3 py-2 font-semibold">{finding.lesionType}</td>
             <td className="px-3 py-2">{finding.count}</td>
             <td className="px-3 py-2">{finding.location || 'Not specified'}</td>
-            <td className={`px-3 py-2 font-bold ${confidenceClass(finding.confidence)}`}>
-              {Math.round(finding.confidence * 100)}%
+            <td className={`px-3 py-2 font-bold ${reliabilityClass(finding.reliabilityCategory)}`}>
+              {finding.reliabilityCategory || '—'}
             </td>
           </tr>
         ))}

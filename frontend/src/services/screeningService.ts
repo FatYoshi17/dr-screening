@@ -109,7 +109,9 @@ export const screeningService = {
         findings: result.findings?.map((f) => ({
           lesionType: f.lesionType,
           count: f.count,
-          confidence: f.confidence
+          confidence: f.confidence,
+          location: f.location,
+          reliabilityCategory: f.reliabilityCategory
         })),
         severity: result.severity,
         explainability: result.explainability,

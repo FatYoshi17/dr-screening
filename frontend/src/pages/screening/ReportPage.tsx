@@ -8,6 +8,7 @@ import { FundusImage } from '../../components/ui/FundusImage';
 import { ReportSection } from '../../components/ui/ReportSection';
 import { InfoGrid } from '../../components/ui/InfoGrid';
 import { FindingsTable } from '../../components/ui/FindingsTable';
+import { DisagreementBanner } from '../../components/ui/DisagreementBanner';
 import { Printer, Share2, ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { ScreeningRecord, PatientRecord } from '../../types';
 
@@ -40,17 +41,17 @@ const getDemoReportData = (screening: ScreeningRecord): ScreeningRecord => {
       { name: 'Artifact control', score: isRetake ? 0.45 : 0.93, assessment: isRetake ? 'Poor' : 'Good' },
     ],
     findings: screening.findings?.length ? screening.findings : isPriority ? [
-      { lesionType: 'Blot hemorrhages', count: 8, location: 'All quadrants', confidence: 0.94 },
-      { lesionType: 'Hard exudates', count: 5, location: 'Posterior pole', confidence: 0.90 },
-      { lesionType: 'Neovascularization', count: 1, location: 'Optic disc', confidence: 0.87 },
+      { lesionType: 'Blot hemorrhages', count: 8, location: 'All quadrants', confidence: 0.94, reliabilityCategory: 'Reliable' as const },
+      { lesionType: 'Hard exudates', count: 5, location: 'Posterior pole', confidence: 0.90, reliabilityCategory: 'Reliable' as const },
+      { lesionType: 'Neovascularization', count: 1, location: 'Optic disc', confidence: 0.87, reliabilityCategory: 'Reliable' as const },
     ] : isReview ? [
-      { lesionType: 'Microaneurysms', count: 4, location: 'Temporal macula', confidence: 0.82 },
-      { lesionType: 'Hard exudates', count: 2, location: 'Outside fovea', confidence: 0.76 },
-      { lesionType: 'Venous dilation', count: 1, location: 'Inferior arcade', confidence: 0.71 },
+      { lesionType: 'Microaneurysms', count: 4, location: 'Temporal macula', confidence: 0.82, reliabilityCategory: 'Reliable' as const },
+      { lesionType: 'Hard exudates', count: 2, location: 'Outside fovea', confidence: 0.76, reliabilityCategory: 'Reliable' as const },
+      { lesionType: 'Venous dilation', count: 1, location: 'Inferior arcade', confidence: 0.71, reliabilityCategory: 'Moderate' as const },
     ] : isRetake ? [
-      { lesionType: 'Image artifact', count: 1, location: 'Full field', confidence: 0.93 },
+      { lesionType: 'Image artifact', count: 1, location: 'Full field', confidence: 0.93, reliabilityCategory: 'Reliable' as const },
     ] : [
-      { lesionType: 'No detected lesion', count: 0, location: 'Posterior pole', confidence: 0.96 },
+      { lesionType: 'No detected lesion', count: 0, location: 'Posterior pole', confidence: 0.96, reliabilityCategory: 'Reliable' as const },
     ],
     severity: screening.severity || {
       icdrGrade: isPriority ? 4 : isReview ? 2 : isRetake ? 5 : 0,
@@ -189,15 +190,9 @@ export const ReportPage: React.FC = () => {
               {reportScreening.resultRecommendation}
             </p>
           </div>
-          <div className="text-xs text-slate-600 space-y-1 bg-teal-50/60 p-3 rounded-xl border border-teal-200 mt-2">
-            <div className="font-bold text-brand-900 flex items-center gap-1.5">
-              {tone.icon}
-              <span>{t('report.protocolVerified')}</span>
-            </div>
-            <p className="text-[11px] text-slate-700">
-              {t('report.protocolDescription')}
-            </p>
-          </div>
+          {reportScreening.explainability?.flagged && (
+            <DisagreementBanner reason={reportScreening.explainability.flagReason} />
+          )}
         </ReportSection>
 
         {/* Section 2 — Retinal findings: original + AI-interpreted image
@@ -286,6 +281,63 @@ export const ReportPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </ReportSection>
+        )}
+
+        {/* Section 5 — Technical appendix: raw numbers moved out of the
+            main findings table (Section 2 now shows Reliable/Moderate/Low
+            categories there) so the clinical body stays readable, per
+            clinician feedback - the numbers themselves aren't hidden,
+            just pushed here rather than competing with the main findings. */}
+        {(reportScreening.qualityFeatures?.length || reportScreening.explainability || reportScreening.findings?.length) && (
+          <ReportSection number="5" title={t('report.technicalAppendix')}>
+            {reportScreening.qualityFeatures && reportScreening.qualityFeatures.length > 0 && (
+              <div className="mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                  {t('report.qualityFeatureScores')}
+                </span>
+                <InfoGrid
+                  fields={reportScreening.qualityFeatures.map((f) => ({
+                    label: f.name,
+                    value: `${f.assessment} (${(f.score * 100).toFixed(0)}%)`,
+                    emphasis: f.assessment === 'Good' ? 'success' : f.assessment === 'Acceptable' ? 'warning' : 'danger',
+                  }))}
+                  columns={4}
+                />
+              </div>
+            )}
+            {reportScreening.explainability && (
+              <div className="mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                  {t('report.modelConfidenceExplainability')}
+                </span>
+                <InfoGrid
+                  fields={[
+                    { label: t('report.calibratedConfidence'), value: `${(reportScreening.explainability.calibratedConfidence * 100).toFixed(0)}% (${reportScreening.explainability.reliabilityCategory})` },
+                    { label: t('report.lesionAttentionOverlap'), value: `${(reportScreening.explainability.lesionAttentionOverlap * 100).toFixed(0)}%` },
+                    { label: t('report.reviewFlagStatus'), value: reportScreening.explainability.flagged ? t('report.disagreementFlagged') : t('report.agree'), emphasis: reportScreening.explainability.flagged ? 'warning' : 'success' },
+                  ]}
+                  columns={4}
+                />
+              </div>
+            )}
+            {reportScreening.findings && reportScreening.findings.length > 0 && (
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                  {t('report.rawLesionConfidence')}
+                </span>
+                <InfoGrid
+                  fields={reportScreening.findings.map((f) => ({
+                    label: f.lesionType,
+                    value: `${(f.confidence * 100).toFixed(0)}%`,
+                  }))}
+                  columns={4}
+                />
+                <p className="text-[10px] text-slate-400 italic mt-1">
+                  {t('report.lesionConfidenceCaveat')}
+                </p>
+              </div>
+            )}
           </ReportSection>
         )}
 

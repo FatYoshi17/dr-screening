@@ -13,9 +13,16 @@ models instead of scripted responses.
    pip install -r backend/requirements.txt
    python -m uvicorn backend.main:app --reload --port 8000
    ```
-   This shells out to `matlab -batch` per request - each real screening
-   takes ~10-30s (MATLAB's own startup overhead), not instant like the
-   demo scenarios below.
+   This shells out to `matlab -batch` per request - MATLAB's own
+   startup overhead means neither call is instant like the demo
+   scenarios below, but they're not the same cost: the Quality
+   Verification step calls `POST /api/quality-check` (Module 1 only,
+   ~10-20s), and the actual screening analysis separately calls
+   `POST /api/screen` (the full quality→segmentation→grading→
+   explainability pipeline, ~20-40s+). Splitting these out matters -
+   the quality check used to run the full pipeline just to answer "is
+   this photo usable", making it as slow as a real screening for no
+   reason.
 
 2. Start this frontend:
    ```

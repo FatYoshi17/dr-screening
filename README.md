@@ -11,12 +11,13 @@ background in [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 
 | Module | Status | Result |
 |---|---|---|
-| **Module 1** — image quality | Threshold fallback working now; real EyeQ-trained model training in progress | Threshold model verified on real images |
-| **Module 2, Track A** — structures (OD, vessels, EX, HE, IRMA, NV, CWS...) | **Trained** (resnet18 DeepLabV3+, 80 epochs) | Loss ~0.26, ~95% pixel accuracy |
-| **Module 2, Track B** — microaneurysms (SegFormer) | Import fixed and verified — **fine-tuning not yet run** | `predict()` runs end-to-end, stable non-degenerate output |
-| **Module 3** — severity grading | **Trained** (resnet50 + GeM pooling, 30 epochs) | Validation QWK **0.9156** |
-| **Module 4** — explainability (Grad-CAM, calibration) | Code complete, awaiting Module 3's calibration pass | — |
-| **Frontend** | Built and wired to the real pipeline via `backend/` — see [frontend/README.md](frontend/README.md) | Real captures produce real grades/reports, not demo data |
+| **Module 1** — image quality | **Trained** (ordinal logistic regression, EyeQ) + a deterministic fundus-plausibility gate ahead of it (`checkFundusPlausibility.m`) | Correctly rejects non-fundus photos (FOV coverage > 0.95, e.g. an external eye/eyebrow close-up) that the trained model alone did not catch |
+| **Module 2, Track A** — structures (OD, vessels, EX, HE, IRMA, NV, CWS...) | **Trained** (resnet18 DeepLabV3+, 80 epochs) | Loss ~0.26, ~95% pixel accuracy (train). Held-out per-class Dice (IDRiD segmentation test, n=27, via `evaluate_trackA_dice.m`): **EX 0.416, HE 0.296, CWS 0.507**. IRMA/NV: not evaluable — IDRiD's ground truth has no annotations for either class |
+| **Module 2, Track B** — microaneurysms | **CBAM CNN is the active model** (~0.36 mean Dice, held-out IDRiD patches). SegFormer-B0 import works end-to-end and was fully fine-tuned (3600 iterations, LR 3e-4), but scored **0.000 Dice at every threshold tested (0.10-0.30)** on held-out patches — the import/training pipeline runs, the model itself just isn't competitive yet. `cfg.trackBActiveNetPath` stays on CBAM | See `module2_segmentation/trackB_microaneurysms/evaluateTrackBCheckpoint.m` |
+| **Module 3** — severity grading | **Trained** (resnet50 + GeM pooling, 30 epochs) | Validation QWK **0.9156** (APTOS internal 85/15 split — a training-time metric, not held-out sensitivity/specificity). Real sensitivity/specificity at the referable-DR threshold (grade≥2), on IDRiD's held-out Disease Grading test set and an external Messidor-2 subset with real grades (matched via MAPLES-DR), plus a rule-only vs. CNN-only vs. combined ablation: see `evaluate_referable_dr.m` and `results/evaluate_referable_dr_results.mat` |
+| **Module 4** — explainability (Grad-CAM, calibration) | Code complete and wired into every real report | Calibrated confidence, lesion-attention overlap, disagreement flagging all live in both the MATLAB PDF and the web report |
+| **Module 5** — capacity planning | Analytical M/M/c queueing model (`capacity_planning.m`) connecting `scalability_cost_projection.pdf`'s real tier data to a concrete GPU/server-count recommendation per tier, rather than an unconnected SimEvents stress test | Pilot: 1 server, Growth: 1 server, Scale: 2 servers to keep burst-load utilization ≤80% |
+| **Frontend** | Built and wired to the real pipeline via `backend/` — see [frontend/README.md](frontend/README.md) | Real captures produce real grades/reports, not demo data; a separate fast `/api/quality-check` endpoint runs Module 1 alone (~seconds) so the quality-check step doesn't pay for the full grading pipeline |
 
 **Track B's SegFormer import is fixed.** MATLAB's ONNX converter is
 blocked by a genuine MathWorks packaging defect — the "Deep Learning
@@ -48,10 +49,17 @@ network end to end (`test_segformer_predict.m`), producing a stable
 
 `buildTrackBSegformerNetwork.m` wraps the imported encoder with the
 same 4x upsample + softmax + Dice+Focal loss head the rest of Track B
-uses, and `trainTrackB.m` now fine-tunes this network instead of the
-CBAM CNN fallback (`buildTrackBNetwork.m`, kept only as a fallback,
-not currently used). Fine-tuning itself has not been run yet — that's
-the next step.
+uses. Fine-tuning has since been run to completion (3600 iterations,
+LR 3e-4, `run_train_trackB.m`) and evaluated (`evaluateTrackBCheckpoint.m`)
+on held-out IDRiD patches: **0.000 Dice at every threshold tested from
+0.10 to 0.30** — worse than earlier attempts, which at least showed
+some real (if miscalibrated) signal. A raw-score check confirmed the
+model isn't dead, just underconfident: ground-truth lesion pixels score
+~0.0075 vs. ~0.0036 for background, but the max score anywhere in a
+real lesion patch was only ~0.011 — 10-30x below every threshold this
+session tried. The CBAM CNN (`buildTrackBNetwork.m`) remains the
+active model (`cfg.trackBActiveNetPath`); SegFormer is importable and
+trainable end-to-end but not yet competitive.
 
 ## Repo layout
 
@@ -109,7 +117,7 @@ Datasets aren't pushed to GitHub — too large, some need licensed
 registration. Download and place under `data/raw/<name>/`:
 
 - [IDRiD](https://ieeedataport.org/open-access/indian-diabetic-retinopathy-image-dataset-idrid) → `data/raw/idrid/` (registration required)
-- [Messidor-2](https://www.adcis.net/en/third-party/messidor2/) → `data/raw/messidor2/` (registration required, external validation holdout only)
+- [Messidor-2](https://www.adcis.net/en/third-party/messidor2/) → `data/raw/messidor2/` (registration required, external validation holdout only). The redistributed image set ships with no DR grade labels — real grades for 162 of the locally-available images were sourced from [MAPLES-DR](https://github.com/LIV4D/MAPLES-DR) (Lepetit-Aimon et al., *Nature Scientific Data* 2024) and merged into `data/raw/messidor2/messidor2_grades.csv` (`image_name,dr_grade`, Messidor's standard R0-R3 scale, referable threshold R≥2)
 - [Refined IDRiD](https://zenodo.org/records/17615903) → `data/raw/refined_idrid/{Train,Test}/{Images,Labels}/` — trains Module 2 (both tracks)
 - [EyeQ](https://github.com/HzFu/EyeQ) → `data/raw/eyeq/` — quality labels for Module 1 (images come from the Kaggle competition below)
 - [Diabetic Retinopathy Detection (EyePACS)](https://www.kaggle.com/competitions/diabetic-retinopathy-detection) → the actual images EyeQ's labels reference

@@ -27,6 +27,25 @@ function cfg = config()
     cfg.idridSegGroundtruthTest  = fullfile(cfg.idridDir, 'A. Segmentation', ...
         '2. All Segmentation Groundtruths', 'b. Testing Set');
 
+    % IDRiD's Disease Grading subset - a DIFFERENT set of images than
+    % A. Segmentation above (same numbering scheme, disjoint image
+    % pools), but it's the one that actually carries ICDR 0-4 grade
+    % labels, needed for real sensitivity/specificity and ablation
+    % evaluation (Module 3), not just lesion masks.
+    cfg.idridGradingImagesTrain = fullfile(cfg.idridDir, 'B. Disease Grading', ...
+        '1. Original Images', 'a. Training Set');
+    cfg.idridGradingImagesTest  = fullfile(cfg.idridDir, 'B. Disease Grading', ...
+        '1. Original Images', 'b. Testing Set');
+    cfg.idridGradingLabelsTrain = fullfile(cfg.idridDir, 'B. Disease Grading', ...
+        '2. Groundtruths', 'a. IDRiD_Disease Grading_Training Labels.csv');
+    cfg.idridGradingLabelsTest  = fullfile(cfg.idridDir, 'B. Disease Grading', ...
+        '2. Groundtruths', 'b. IDRiD_Disease Grading_Testing Labels.csv');
+
+    % Messidor-2 grade labels (Abramoff et al. adjudicated grades,
+    % fetched separately - the redistributed image set only ships a
+    % left/right eye pairing CSV, no grades).
+    cfg.messidor2LabelsPath = fullfile(cfg.dataRaw, 'messidor2', 'messidor2_grades.csv');
+
     cfg.dataProcessed = fullfile(root, 'data', 'processed');
     cfg.resultsDir     = fullfile(root, 'results');
 

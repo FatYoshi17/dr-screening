@@ -1,6 +1,12 @@
 # Datasets - large, not checked in (see README for download links)
 data/raw/*
 !data/raw/.gitkeep
+# Small, hard-to-reproduce label file (merged from MAPLES-DR, not
+# redistributed with the Messidor-2 image set itself) - keep this one,
+# unlike the images it labels.
+!data/raw/messidor2/
+data/raw/messidor2/*
+!data/raw/messidor2/messidor2_grades.csv
 data/processed/*
 !data/processed/.gitkeep
 
